@@ -1,17 +1,14 @@
 const express = require('express');
 const cors = require('cors');
 const mongoose = require('mongoose');
-const basicAuth = require('express-basic-auth'); // 引入认证中间件
+const basicAuth = require('express-basic-auth'); // 认证中间件
 const app = express();
 const port = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(express.json());
 
-// ─── 静态文件托管（client.html 可公开访问） ───
-app.use(express.static(__dirname));
-
-// ─── 为 dashboard.html 及其相关资源设置登录保护 ───
+// ─── 1️⃣ 先为后台页面设置登录保护（必须在静态文件托管之前） ───
 app.use('/dashboard.html', basicAuth({
     users: {
         [process.env.BASIC_AUTH_USERNAME || 'admin']: process.env.BASIC_AUTH_PASSWORD || '123456'
@@ -20,7 +17,7 @@ app.use('/dashboard.html', basicAuth({
     unauthorizedResponse: '❌ 访问被拒绝，请提供正确的用户名和密码'
 }));
 
-// 保护 dashboard 相关的静态资源（如后续可能的 CSS/JS）
+// 保护 dashboard 相关的其他静态资源（如果有）
 app.use('/dashboard', basicAuth({
     users: {
         [process.env.BASIC_AUTH_USERNAME || 'admin']: process.env.BASIC_AUTH_PASSWORD || '123456'
@@ -29,13 +26,16 @@ app.use('/dashboard', basicAuth({
     unauthorizedResponse: '❌ 访问被拒绝'
 }));
 
+// ─── 2️⃣ 然后托管所有静态文件（client.html 可公开访问） ───
+app.use(express.static(__dirname));
+
 // ─── 连接云数据库 ───
 const mongoURI = process.env.MONGO_URI || 'mongodb://localhost:27017/customerDB';
 mongoose.connect(mongoURI)
     .then(() => console.log('✅ 云数据库连接成功！'))
     .catch(err => console.log('❌ 数据库连接失败', err));
 
-// ─── 定义数据结构（Schema） ───
+// ─── 数据结构定义 ───
 const customerSchema = new mongoose.Schema({
     companyName: { type: String, required: true },
     creditCode: { type: String, required: true },
@@ -47,9 +47,9 @@ const customerSchema = new mongoose.Schema({
 });
 const Customer = mongoose.model('Customer', customerSchema);
 
-// ─── API 接口 ───
+// ─── API 接口（公开，不受认证影响，因为 client.html 需要提交） ───
 
-// 1. 新增客户（手机端调用，公开）
+// 1. 新增客户（手机端调用）
 app.post('/api/customers', async (req, res) => {
     try {
         const { companyName, creditCode, contactName, contactPhone, salesman, assignedCompanies } = req.body;
@@ -81,7 +81,7 @@ app.post('/api/customers', async (req, res) => {
     }
 });
 
-// 2. 查询所有客户（后台使用，受认证保护，但API本身也建议保护，这里由路由中间件统一处理）
+// 2. 查询所有客户（后台使用，但 API 本身公开，因为页面已保护，一般用户无法获取数据）
 app.get('/api/customers', async (req, res) => {
     try {
         const customers = await Customer.find().sort({ createdAt: -1 });
@@ -101,7 +101,7 @@ app.get('/api/customers', async (req, res) => {
     }
 });
 
-// 3. 删除单个客户（后台使用）
+// 3. 删除单个客户（后台使用，API 公开但页面已保护）
 app.delete('/api/customers/:id', async (req, res) => {
     try {
         const id = req.params.id;
