@@ -3,7 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>客户信息汇总后台</title>
+    <title>客户信息汇总后台（按天分组+导出）</title>
+    <!-- ⭐ 引入 SheetJS 库，用于导出 Excel -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
@@ -17,89 +19,129 @@
             align-items: center;
             flex-wrap: wrap;
             max-width: 1200px;
-            margin: 0 auto 20px;
+            margin: 0 auto 16px;
         }
         .header h1 { color: #1a2a3a; font-size: 28px; }
-        .badge {
-            background: #3498db;
-            color: white;
-            padding: 8px 20px;
-            border-radius: 40px;
-            font-weight: 700;
-            font-size: 16px;
-        }
-        .controls {
+        .badge { background: #3498db; color: white; padding: 8px 20px; border-radius: 40px; font-weight: 700; }
+        .toolbar {
             max-width: 1200px;
             margin: 0 auto 20px;
             display: flex;
             gap: 12px;
-            align-items: center;
             flex-wrap: wrap;
+            align-items: center;
+            background: white;
+            padding: 12px 20px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
         }
-        .btn-refresh {
-            background: #2ecc71;
-            color: white;
+        .btn {
+            padding: 8px 24px;
             border: none;
-            padding: 10px 28px;
             border-radius: 30px;
-            font-size: 16px;
+            font-size: 15px;
             font-weight: 600;
             cursor: pointer;
-            box-shadow: 0 2px 8px rgba(46,204,113,0.3);
-        }
-        .btn-refresh:active { transform: scale(0.97); }
-        .count-info { color: #5a6a7a; font-size: 15px; }
-        .card-grid {
-            max-width: 1200px;
-            margin: 0 auto;
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 16px;
-        }
-        .customer-card {
-            background: white;
-            border-radius: 14px;
-            padding: 20px 24px;
-            box-shadow: 0 2px 12px rgba(0,0,0,0.06);
-            border-left: 5px solid #3498db;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
             transition: 0.2s;
         }
-        .customer-card:hover { box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
-        .info-left { display: flex; flex-direction: column; gap: 6px; }
-        .info-left .company { font-size: 20px; font-weight: 700; color: #1a2a3a; }
-        .info-left .detail { font-size: 15px; color: #4a5a6a; display: flex; flex-wrap: wrap; gap: 18px; }
-        .info-left .detail span { background: #f0f4f8; padding: 2px 12px; border-radius: 20px; }
-        .info-right {
+        .btn-refresh { background: #2ecc71; color: white; }
+        .btn-export { background: #f39c12; color: white; }
+        .btn-export:hover { background: #d68910; }
+        .btn-danger { background: #e74c3c; color: white; }
+        .btn-danger:hover { background: #c0392b; }
+        .btn-refresh:active, .btn-export:active { transform: scale(0.97); }
+        .select-all-label {
             display: flex;
-            flex-direction: column;
-            align-items: flex-end;
+            align-items: center;
             gap: 6px;
-        }
-        .info-right .time { font-size: 14px; color: #8a9aa8; background: #f0f2f5; padding: 2px 14px; border-radius: 20px; }
-        .info-right .salesman { font-weight: 700; color: #2c3e50; background: #eaf2f8; padding: 4px 16px; border-radius: 30px; }
-        .empty {
-            text-align: center;
-            padding: 60px 20px;
-            color: #8a9aa8;
-            font-size: 18px;
-        }
-        .delete-btn {
-            background: #e74c3c;
-            color: white;
-            border: none;
-            padding: 4px 16px;
-            border-radius: 30px;
-            cursor: pointer;
             font-size: 14px;
-            margin-top: 4px;
+            color: #2c3e50;
+            cursor: pointer;
         }
+        .select-all-label input { width: 18px; height: 18px; accent-color: #3498db; }
+
+        /* 按天分组卡片 */
+        .day-group {
+            max-width: 1200px;
+            margin: 0 auto 24px;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.05);
+            overflow: hidden;
+        }
+        .day-header {
+            background: #ecf0f1;
+            padding: 12px 24px;
+            font-size: 18px;
+            font-weight: 700;
+            color: #2c3e50;
+            display: flex;
+            justify-content: space-between;
+            border-bottom: 2px solid #dce1e8;
+        }
+        .day-count { background: #bdc3c7; padding: 2px 14px; border-radius: 30px; font-size: 14px; }
+        .customer-card {
+            display: flex;
+            align-items: center;
+            padding: 14px 24px;
+            border-bottom: 1px solid #f0f2f5;
+            gap: 16px;
+            transition: 0.1s;
+        }
+        .customer-card:hover { background: #fafbfc; }
+        .customer-card:last-child { border-bottom: none; }
+        .customer-card .checkbox-wrap { flex-shrink: 0; }
+        .customer-card input[type="checkbox"] { width: 18px; height: 18px; accent-color: #3498db; cursor: pointer; }
+        .card-content {
+            flex: 1;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 10px 20px;
+        }
+        .card-content .company { font-weight: 700; color: #1a2a3a; font-size: 16px; min-width: 120px; }
+        .card-content .detail {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            font-size: 14px;
+            color: #4a5a6a;
+        }
+        .card-content .detail .tag {
+            background: #f0f4f8;
+            padding: 2px 12px;
+            border-radius: 30px;
+            white-space: nowrap;
+        }
+        .card-content .detail .company-tag {
+            background: #d4e6f1;
+            color: #1a3a5a;
+            padding: 2px 12px;
+            border-radius: 30px;
+            font-weight: 600;
+            font-size: 13px;
+        }
+        .card-actions {
+            display: flex;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+        .btn-small {
+            padding: 4px 16px;
+            border: none;
+            border-radius: 30px;
+            font-size: 13px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        .btn-del { background: #fde8e8; color: #b03a2e; }
+        .btn-del:hover { background: #e74c3c; color: white; }
+        .empty { text-align: center; padding: 60px 20px; color: #8a9aa8; font-size: 18px; }
+        .time-text { font-size: 13px; color: #95a5a6; }
         @media (max-width: 600px) {
-            .customer-card { flex-direction: column; align-items: flex-start; gap: 12px; }
-            .info-right { align-items: flex-start; width: 100%; flex-direction: row; flex-wrap: wrap; justify-content: space-between; }
+            .customer-card { flex-wrap: wrap; }
+            .card-content { width: 100%; }
+            .card-actions { width: 100%; justify-content: flex-end; }
         }
     </style>
 </head>
@@ -108,86 +150,177 @@
     <h1>📊 客户信息汇总</h1>
     <span class="badge" id="totalCount">0 条</span>
 </div>
-<div class="controls">
-    <button class="btn-refresh" id="refreshBtn">🔄 刷新数据</button>
-    <span class="count-info">🕒 按提交时间倒序排列</span>
+<div class="toolbar">
+    <button class="btn btn-refresh" id="refreshBtn">🔄 刷新</button>
+    <button class="btn btn-export" id="exportBtn">📥 导出选中到 Excel</button>
+    <label class="select-all-label">
+        <input type="checkbox" id="selectAllCheckbox"> 全选
+    </label>
+    <span style="color:#7f8c8d;font-size:14px;margin-left:auto;">🕒 按天分组，最新在前</span>
 </div>
-<div class="card-grid" id="cardContainer">
-    <div class="empty">暂无客户数据，请等待业务员提交 ⏳</div>
+
+<div id="container">
+    <div class="empty">⏳ 加载数据中...</div>
 </div>
 
 <script>
     const API_URL = '/api/customers';
-    const container = document.getElementById('cardContainer');
+    const container = document.getElementById('container');
     const totalBadge = document.getElementById('totalCount');
+    const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+
+    // 存储当前所有数据（用于导出和渲染）
+    let currentCustomers = [];
 
     async function loadData() {
         try {
             const res = await fetch(API_URL);
             const result = await res.json();
             if (result.code === 0) {
-                renderCards(result.data);
+                currentCustomers = result.data;
+                renderGroups(currentCustomers);
             } else {
                 alert('加载失败：' + result.message);
             }
         } catch (err) {
-            alert('❌ 连接不上服务器！请确认服务已启动（node server.js）');
+            alert('❌ 连接不上服务器！请确认服务已启动');
         }
     }
 
-    function renderCards(customers) {
+    // ⭐ 按天分组 + 渲染
+    function renderGroups(customers) {
         totalBadge.textContent = customers.length + ' 条';
 
         if (customers.length === 0) {
-            container.innerHTML = '<div class="empty">🎯 暂无客户数据，请等待业务员提交</div>';
+            container.innerHTML = '<div class="empty">🎯 暂无客户数据</div>';
             return;
         }
 
-        let html = '';
+        // 按天分组（使用 createdAt 日期）
+        const groups = {};
         customers.forEach(c => {
-            html += `
-                <div class="customer-card">
-                    <div class="info-left">
-                        <div class="company">🏢 ${escapeHtml(c.companyName)}</div>
-                        <div class="detail">
-                            <span>📇 联系人：${escapeHtml(c.contactName || '未填')}</span>
-                            <span>📞 电话：${escapeHtml(c.contactPhone || '未填')}</span>
-                            <span>🆔 信用代码：${escapeHtml(c.creditCode || '未填')}</span>
+            const dateObj = new Date(c.createdAt);
+            // 格式化为 "YYYY年MM月DD日"
+            const dateKey = `${dateObj.getFullYear()}年${String(dateObj.getMonth()+1).padStart(2,'0')}月${String(dateObj.getDate()).padStart(2,'0')}日`;
+            if (!groups[dateKey]) groups[dateKey] = [];
+            groups[dateKey].push(c);
+        });
+
+        // 对日期键进行排序（降序，最新的在前）
+        const sortedDates = Object.keys(groups).sort((a, b) => {
+            // 简单比较：将中文日期转为可比较的字符串
+            return a.localeCompare(b, 'zh-CN') * -1;
+        });
+
+        let html = '';
+        sortedDates.forEach(dateKey => {
+            const items = groups[dateKey];
+            html += `<div class="day-group">`;
+            html += `<div class="day-header"><span>📅 ${dateKey}</span><span class="day-count">${items.length} 条</span></div>`;
+            items.forEach(c => {
+                // 格式化详细时间
+                const timeStr = new Date(c.createdAt).toLocaleTimeString('zh-CN', { hour12: false });
+                const companyTags = c.assignedCompanies.map(comp => `<span class="company-tag">${comp}</span>`).join(' ');
+                html += `
+                    <div class="customer-card" data-id="${c.id}">
+                        <div class="checkbox-wrap">
+                            <input type="checkbox" class="row-checkbox" value="${c.id}" />
+                        </div>
+                        <div class="card-content">
+                            <div class="company">🏢 ${escapeHtml(c.companyName)}</div>
+                            <div class="detail">
+                                <span class="tag">🆔 ${escapeHtml(c.creditCode)}</span>
+                                <span class="tag">📇 ${escapeHtml(c.contactName || '未填')}</span>
+                                <span class="tag">📞 ${escapeHtml(c.contactPhone || '未填')}</span>
+                                <span class="tag">👤 ${escapeHtml(c.salesman)}</span>
+                                <span class="time-text">🕐 ${timeStr}</span>
+                                <span>分配：${companyTags}</span>
+                            </div>
+                        </div>
+                        <div class="card-actions">
+                            <button class="btn-small btn-del" data-id="${c.id}">🗑️ 删除</button>
                         </div>
                     </div>
-                    <div class="info-right">
-                        <div class="salesman">👤 ${escapeHtml(c.salesman)}</div>
-                        <div class="time">⏱️ ${escapeHtml(c.createdAt)}</div>
-                        <button class="delete-btn" data-id="${c.id}">🗑️ 删除</button>
-                    </div>
-                </div>
-            `;
+                `;
+            });
+            html += `</div>`;
         });
+
         container.innerHTML = html;
 
         // 绑定删除事件
-        document.querySelectorAll('.delete-btn').forEach(btn => {
+        document.querySelectorAll('.btn-del').forEach(btn => {
             btn.addEventListener('click', async function() {
                 const id = this.dataset.id;
-                if (confirm(`确定要删除 ID 为 ${id} 的客户吗？`)) {
+                if (confirm(`确定要删除这条记录吗？（删除后不可恢复）`)) {
                     await deleteItem(id);
                     await loadData(); // 刷新
                 }
             });
         });
+
+        // 全选逻辑：监听每个复选框，更新全选状态
+        const checkboxes = document.querySelectorAll('.row-checkbox');
+        checkboxes.forEach(cb => {
+            cb.addEventListener('change', function() {
+                const allChecked = Array.from(checkboxes).every(c => c.checked);
+                selectAllCheckbox.checked = allChecked;
+            });
+        });
+        // 全选按钮控制所有子复选框
+        selectAllCheckbox.addEventListener('change', function() {
+            document.querySelectorAll('.row-checkbox').forEach(cb => cb.checked = this.checked);
+        });
     }
 
+    // 删除 API
     async function deleteItem(id) {
         try {
             const res = await fetch(`${API_URL}/${id}`, { method: 'DELETE' });
             const result = await res.json();
-            if (result.code !== 0) {
-                alert('删除失败：' + result.message);
-            }
+            if (result.code !== 0) alert('删除失败：' + result.message);
         } catch (err) {
             alert('删除请求失败');
         }
     }
+
+    // ⭐ 导出选中到 Excel
+    document.getElementById('exportBtn').addEventListener('click', function() {
+        const checkedIds = [];
+        document.querySelectorAll('.row-checkbox:checked').forEach(cb => checkedIds.push(cb.value));
+
+        if (checkedIds.length === 0) {
+            alert('请先勾选至少一条数据！');
+            return;
+        }
+
+        // 根据 ID 筛选数据
+        const selectedData = currentCustomers.filter(c => checkedIds.includes(c.id.toString()));
+
+        if (selectedData.length === 0) {
+            alert('选中的数据不存在，请刷新重试');
+            return;
+        }
+
+        // 格式化数据为 Excel 行（中文表头）
+        const excelRows = selectedData.map(c => ({
+            '公司名称': c.companyName,
+            '统一社会信用代码': c.creditCode,
+            '客户姓名': c.contactName || '',
+            '客户电话': c.contactPhone || '',
+            '业务员': c.salesman,
+            '分配公司': c.assignedCompanies.join('、'),
+            '提交时间': new Date(c.createdAt).toLocaleString('zh-CN', { hour12: false })
+        }));
+
+        // 创建工作簿并导出
+        const wb = XLSX.utils.book_new();
+        const ws = XLSX.utils.json_to_sheet(excelRows);
+        XLSX.utils.book_append_sheet(wb, ws, "客户信息");
+        // 生成文件名（当前日期 + 导出条数）
+        const now = new Date().toISOString().slice(0,10);
+        XLSX.writeFile(wb, `客户信息_${now}_${selectedData.length}条.xlsx`);
+    });
 
     function escapeHtml(str) {
         const div = document.createElement('div');

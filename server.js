@@ -1,55 +1,70 @@
 const express = require('express');
 const cors = require('cors');
-const mongoose = require('mongoose'); // 引入云数据库驱动
+const mongoose = require('mongoose');
 const app = express();
 const port = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(express.json());
-// 托管 HTML 页面，方便通过浏览器直接访问
 app.use(express.static(__dirname));
 
-// ─── 1️⃣ 连接云数据库（从环境变量读取地址） ───
-// 注意：MONGO_URI 就是刚才你保存的那个长字符串
+// ─── 连接云数据库 ───
 const mongoURI = process.env.MONGO_URI || 'mongodb://localhost:27017/customerDB';
 mongoose.connect(mongoURI)
-  .then(() => console.log('✅ 云数据库连接成功！数据永久保存'))
-  .catch(err => console.log('❌ 数据库连接失败，请检查连接字符串', err));
+  .then(() => console.log('✅ 云数据库连接成功！'))
+  .catch(err => console.log('❌ 数据库连接失败', err));
 
-// ─── 2️⃣ 定义客户信息的数据结构（Schema） ───
+// ─── 定义数据结构（Schema） ───
 const customerSchema = new mongoose.Schema({
-  companyName: { type: String, required: true },
-  creditCode: String,
-  contactName: String,
-  contactPhone: String,
-  salesman: { type: String, required: true },
-  createdAt: { type: String, default: () => new Date().toLocaleString('zh-CN', { hour12: false }) }
+  companyName: { type: String, required: true },        // 公司名称（必填）
+  creditCode: { type: String, required: true },         // ⭐ 统一社会信用代码（改为必填）
+  contactName: String,                                  // 客户姓名
+  contactPhone: String,                                 // 客户电话
+  salesman: { type: String, required: true },           // 业务员（必填）
+  assignedCompanies: { type: [String], required: true },// ⭐ 分配公司（多选，必填）
+  createdAt: { type: Date, default: Date.now }          // ⭐ 改为日期类型（方便按天分组）
 });
 const Customer = mongoose.model('Customer', customerSchema);
 
-// ─── 3️⃣ API 接口（和之前功能一样，但数据存云上） ───
+// ─── API 接口 ───
 
-// 新增客户
+// 1. 新增客户（手机端调用）
 app.post('/api/customers', async (req, res) => {
   try {
-    const { companyName, creditCode, contactName, contactPhone, salesman } = req.body;
-    if (!companyName) return res.status(400).json({ code: 400, message: '公司名称不能为空' });
-    if (!salesman) return res.status(400).json({ code: 400, message: '业务员姓名不能为空' });
+    const { companyName, creditCode, contactName, contactPhone, salesman, assignedCompanies } = req.body;
 
-    const newCustomer = new Customer({ companyName, creditCode, contactName, contactPhone, salesman });
+    // 必填项校验
+    if (!companyName) return res.status(400).json({ code: 400, message: '公司名称不能为空' });
+    if (!creditCode) return res.status(400).json({ code: 400, message: '统一社会信用代码不能为空' });
+    if (!salesman) return res.status(400).json({ code: 400, message: '业务员姓名不能为空' });
+    if (!assignedCompanies || assignedCompanies.length === 0) {
+      return res.status(400).json({ code: 400, message: '请至少选择一个分配公司' });
+    }
+
+    const newCustomer = new Customer({
+      companyName,
+      creditCode,
+      contactName: contactName || '',
+      contactPhone: contactPhone || '',
+      salesman,
+      assignedCompanies
+    });
     await newCustomer.save();
 
-    // 返回给前端的数据（把 _id 映射成 id）
-    res.json({ code: 0, message: '客户信息提交成功！', data: { id: newCustomer._id, ...newCustomer._doc } });
+    res.json({ 
+      code: 0, 
+      message: '客户信息提交成功！', 
+      data: { id: newCustomer._id, ...newCustomer._doc } 
+    });
   } catch (err) {
     res.status(500).json({ code: 500, message: '服务器错误', error: err.message });
   }
 });
 
-// 查询所有客户（周一你看的数据）
+// 2. 查询所有客户（周一你看的数据）
 app.get('/api/customers', async (req, res) => {
   try {
-    const customers = await Customer.find().sort({ _id: -1 }); // 最新在前
+    const customers = await Customer.find().sort({ createdAt: -1 }); // 按时间倒序
     const data = customers.map(c => ({
       id: c._id,
       companyName: c.companyName,
@@ -57,7 +72,8 @@ app.get('/api/customers', async (req, res) => {
       contactName: c.contactName,
       contactPhone: c.contactPhone,
       salesman: c.salesman,
-      createdAt: c.createdAt
+      assignedCompanies: c.assignedCompanies,
+      createdAt: c.createdAt // 直接返回日期对象，前端格式化
     }));
     res.json({ code: 0, message: 'success', data });
   } catch (err) {
@@ -65,7 +81,7 @@ app.get('/api/customers', async (req, res) => {
   }
 });
 
-// 删除客户
+// 3. 删除单个客户
 app.delete('/api/customers/:id', async (req, res) => {
   try {
     const id = req.params.id;
