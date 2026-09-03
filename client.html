@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>业务员客户信息上报</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+            background: #f0f4f8;
+            padding: 20px 16px 40px;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 500px;
+            margin: 0 auto;
+        }
+        .header {
+            text-align: center;
+            padding: 20px 0 10px;
+            color: #1a2a3a;
+        }
+        .header h1 { font-size: 24px; font-weight: 700; }
+        .header p { color: #6b7a8a; font-size: 14px; margin-top: 4px; }
+        .card {
+            background: #ffffff;
+            border-radius: 16px;
+            padding: 24px 20px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+            margin-top: 16px;
+        }
+        .form-group {
+            margin-bottom: 18px;
+        }
+        .form-group label {
+            display: block;
+            font-size: 15px;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 6px;
+        }
+        .form-group label .required {
+            color: #e74c3c;
+            margin-left: 2px;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 14px 16px;
+            font-size: 16px; /* 防止iOS自动缩放 */
+            border: 1.5px solid #dce1e8;
+            border-radius: 12px;
+            background: #fafbfc;
+            transition: 0.2s;
+            color: #1a2a3a;
+        }
+        .form-group input:focus {
+            border-color: #3498db;
+            background: #ffffff;
+            outline: none;
+            box-shadow: 0 0 0 4px rgba(52,152,219,0.15);
+        }
+        .form-group input::placeholder {
+            color: #b0bcc8;
+            font-size: 15px;
+        }
+        .btn-submit {
+            width: 100%;
+            padding: 16px;
+            font-size: 20px;
+            font-weight: 700;
+            background: #3498db;
+            color: white;
+            border: none;
+            border-radius: 14px;
+            cursor: pointer;
+            transition: 0.2s;
+            margin-top: 8px;
+            letter-spacing: 2px;
+            box-shadow: 0 4px 12px rgba(52,152,219,0.3);
+        }
+        .btn-submit:active {
+            transform: scale(0.97);
+            background: #2176ae;
+        }
+        .btn-submit:disabled {
+            background: #a0b8cc;
+            box-shadow: none;
+        }
+        #message {
+            margin-top: 16px;
+            padding: 14px;
+            border-radius: 12px;
+            font-size: 16px;
+            text-align: center;
+            display: none;
+        }
+        #message.success {
+            display: block;
+            background: #e8f8f0;
+            color: #1a7a4a;
+            border: 1px solid #b8e0cc;
+        }
+        #message.error {
+            display: block;
+            background: #fde8e8;
+            color: #b03a2e;
+            border: 1px solid #f5c8c8;
+        }
+        .footer-tip {
+            text-align: center;
+            color: #8a9aa8;
+            font-size: 13px;
+            margin-top: 24px;
+            padding: 10px;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1>📋 客户信息上报</h1>
+        <p>请业务员如实填写，周一统一汇总</p>
+    </div>
+
+    <div class="card">
+        <div class="form-group">
+            <label>公司名称 <span class="required">*</span></label>
+            <input type="text" id="companyName" placeholder="例：XX科技有限公司" />
+        </div>
+        <div class="form-group">
+            <label>统一社会信用代码</label>
+            <input type="text" id="creditCode" placeholder="18位代码（选填）" />
+        </div>
+        <div class="form-group">
+            <label>客户姓名</label>
+            <input type="text" id="contactName" placeholder="联系人姓名（选填）" />
+        </div>
+        <div class="form-group">
+            <label>客户电话</label>
+            <input type="tel" id="contactPhone" placeholder="手机号（选填）" />
+        </div>
+        <div class="form-group">
+            <label>业务员姓名 <span class="required">*</span></label>
+            <input type="text" id="salesman" placeholder="请填写你的全名" />
+        </div>
+
+        <button class="btn-submit" id="btnSubmit">✅ 提交客户信息</button>
+        <div id="message"></div>
+    </div>
+    <div class="footer-tip">提交后数据将自动保存，请勿重复提交</div>
+</div>
+
+<script>
+    const API_URL = '/api/customers';
+    const btn = document.getElementById('btnSubmit');
+    const msg = document.getElementById('message');
+
+    // 获取所有输入框
+    const companyName = document.getElementById('companyName');
+    const creditCode = document.getElementById('creditCode');
+    const contactName = document.getElementById('contactName');
+    const contactPhone = document.getElementById('contactPhone');
+    const salesman = document.getElementById('salesman');
+
+    // 显示消息
+    function showMessage(text, type) {
+        msg.textContent = text;
+        msg.className = type;
+        msg.style.display = 'block';
+        // 5秒后自动隐藏
+        setTimeout(() => { msg.style.display = 'none'; }, 5000);
+    }
+
+    btn.addEventListener('click', async function() {
+        // 收集数据
+        const data = {
+            companyName: companyName.value.trim(),
+            creditCode: creditCode.value.trim(),
+            contactName: contactName.value.trim(),
+            contactPhone: contactPhone.value.trim(),
+            salesman: salesman.value.trim()
+        };
+
+        // 前端校验
+        if (!data.companyName) {
+            showMessage('❌ 请填写公司名称', 'error');
+            companyName.focus();
+            return;
+        }
+        if (!data.salesman) {
+            showMessage('❌ 请填写业务员姓名', 'error');
+            salesman.focus();
+            return;
+        }
+
+        // 禁用按钮，防止重复点击
+        btn.disabled = true;
+        btn.textContent = '⏳ 提交中...';
+
+        try {
+            const response = await fetch(API_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            const result = await response.json();
+
+            if (result.code === 0) {
+                showMessage('✅ ' + result.message + '，感谢上报！', 'success');
+                // 清空表单
+                companyName.value = '';
+                creditCode.value = '';
+                contactName.value = '';
+                contactPhone.value = '';
+                salesman.value = '';
+            } else {
+                showMessage('❌ 提交失败：' + result.message, 'error');
+            }
+        } catch (err) {
+            showMessage('❌ 网络连接失败，请检查网络或联系管理员', 'error');
+        }
+
+        // 恢复按钮
+        btn.disabled = false;
+        btn.textContent = '✅ 提交客户信息';
+    });
+</script>
+</body>
+</html>
