@@ -2,6 +2,7 @@
   "dependencies": {
     "cors": "^2.8.6",
     "express": "^5.2.1",
+    "express-basic-auth": "^1.2.1",
     "mongoose": "^9.9.4"
   }
 }
