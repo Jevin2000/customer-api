@@ -1,14 +1,14 @@
 const express = require('express');
 const cors = require('cors');
 const mongoose = require('mongoose');
-const basicAuth = require('express-basic-auth'); // 认证中间件
+const basicAuth = require('express-basic-auth');
 const app = express();
 const port = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(express.json());
 
-// ─── 1️⃣ 先为后台页面设置登录保护（必须在静态文件托管之前） ───
+// ─── 1. 先为后台页面设置登录保护 ───
 app.use('/dashboard.html', basicAuth({
     users: {
         [process.env.BASIC_AUTH_USERNAME || 'admin']: process.env.BASIC_AUTH_PASSWORD || '123456'
@@ -17,7 +17,6 @@ app.use('/dashboard.html', basicAuth({
     unauthorizedResponse: '❌ 访问被拒绝，请提供正确的用户名和密码'
 }));
 
-// 保护 dashboard 相关的其他静态资源（如果有）
 app.use('/dashboard', basicAuth({
     users: {
         [process.env.BASIC_AUTH_USERNAME || 'admin']: process.env.BASIC_AUTH_PASSWORD || '123456'
@@ -26,7 +25,7 @@ app.use('/dashboard', basicAuth({
     unauthorizedResponse: '❌ 访问被拒绝'
 }));
 
-// ─── 2️⃣ 然后托管所有静态文件（client.html 可公开访问） ───
+// ─── 2. 然后托管所有静态文件 ───
 app.use(express.static(__dirname));
 
 // ─── 连接云数据库 ───
@@ -35,10 +34,15 @@ mongoose.connect(mongoURI)
     .then(() => console.log('✅ 云数据库连接成功！'))
     .catch(err => console.log('❌ 数据库连接失败', err));
 
-// ─── 数据结构定义 ───
+// ─── 数据结构定义（新增 entryType 和 idNumber） ───
 const customerSchema = new mongoose.Schema({
+    entryType: { 
+        type: String, 
+        required: true, 
+        enum: ['客户', '供应商']  // 只能选这两个值之一
+    },
     companyName: { type: String, required: true },
-    creditCode: { type: String, required: true },
+    idNumber: { type: String, required: true },  // 统一存储：信用代码或身份证号
     contactName: String,
     contactPhone: String,
     salesman: { type: String, required: true },
@@ -47,23 +51,25 @@ const customerSchema = new mongoose.Schema({
 });
 const Customer = mongoose.model('Customer', customerSchema);
 
-// ─── API 接口（公开，不受认证影响，因为 client.html 需要提交） ───
+// ─── API 接口 ───
 
-// 1. 新增客户（手机端调用）
+// 1. 新增客户/供应商
 app.post('/api/customers', async (req, res) => {
     try {
-        const { companyName, creditCode, contactName, contactPhone, salesman, assignedCompanies } = req.body;
+        const { entryType, companyName, idNumber, contactName, contactPhone, salesman, assignedCompanies } = req.body;
 
+        if (!entryType) return res.status(400).json({ code: 400, message: '请选择类型（客户/供应商）' });
         if (!companyName) return res.status(400).json({ code: 400, message: '公司名称不能为空' });
-        if (!creditCode) return res.status(400).json({ code: 400, message: '统一社会信用代码不能为空' });
+        if (!idNumber) return res.status(400).json({ code: 400, message: '证件号不能为空' });
         if (!salesman) return res.status(400).json({ code: 400, message: '业务员姓名不能为空' });
         if (!assignedCompanies || assignedCompanies.length === 0) {
             return res.status(400).json({ code: 400, message: '请至少选择一个分配公司' });
         }
 
         const newCustomer = new Customer({
+            entryType,
             companyName,
-            creditCode,
+            idNumber,
             contactName: contactName || '',
             contactPhone: contactPhone || '',
             salesman,
@@ -73,7 +79,7 @@ app.post('/api/customers', async (req, res) => {
 
         res.json({
             code: 0,
-            message: '客户信息提交成功！',
+            message: '信息提交成功！',
             data: { id: newCustomer._id, ...newCustomer._doc }
         });
     } catch (err) {
@@ -81,14 +87,15 @@ app.post('/api/customers', async (req, res) => {
     }
 });
 
-// 2. 查询所有客户（后台使用，但 API 本身公开，因为页面已保护，一般用户无法获取数据）
+// 2. 查询所有数据
 app.get('/api/customers', async (req, res) => {
     try {
         const customers = await Customer.find().sort({ createdAt: -1 });
         const data = customers.map(c => ({
             id: c._id,
+            entryType: c.entryType,
             companyName: c.companyName,
-            creditCode: c.creditCode,
+            idNumber: c.idNumber,
             contactName: c.contactName,
             contactPhone: c.contactPhone,
             salesman: c.salesman,
@@ -101,12 +108,12 @@ app.get('/api/customers', async (req, res) => {
     }
 });
 
-// 3. 删除单个客户（后台使用，API 公开但页面已保护）
+// 3. 删除数据
 app.delete('/api/customers/:id', async (req, res) => {
     try {
         const id = req.params.id;
         const deleted = await Customer.findByIdAndDelete(id);
-        if (!deleted) return res.status(404).json({ code: 404, message: '客户不存在' });
+        if (!deleted) return res.status(404).json({ code: 404, message: '数据不存在' });
         res.json({ code: 0, message: '删除成功' });
     } catch (err) {
         res.status(500).json({ code: 500, message: '删除失败' });
