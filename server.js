@@ -34,12 +34,17 @@ mongoose.connect(mongoURI)
     .then(() => console.log('✅ 云数据库连接成功！'))
     .catch(err => console.log('❌ 数据库连接失败', err));
 
-// ─── 数据结构定义（新增 entryType 和 idNumber） ───
+// ─── 数据结构定义（新增 entityType） ───
 const customerSchema = new mongoose.Schema({
     entryType: { 
         type: String, 
         required: true, 
-        enum: ['客户', '供应商']  // 只能选这两个值之一
+        enum: ['客户', '供应商']
+    },
+    entityType: { 
+        type: String, 
+        required: true, 
+        enum: ['企业', '个人']  // ⭐ 新增：主体类型
     },
     companyName: { type: String, required: true },
     idNumber: { type: String, required: true },  // 统一存储：信用代码或身份证号
@@ -53,13 +58,13 @@ const Customer = mongoose.model('Customer', customerSchema);
 
 // ─── API 接口 ───
 
-// 1. 新增客户/供应商
 app.post('/api/customers', async (req, res) => {
     try {
-        const { entryType, companyName, idNumber, contactName, contactPhone, salesman, assignedCompanies } = req.body;
+        const { entryType, entityType, companyName, idNumber, contactName, contactPhone, salesman, assignedCompanies } = req.body;
 
-        if (!entryType) return res.status(400).json({ code: 400, message: '请选择类型（客户/供应商）' });
-        if (!companyName) return res.status(400).json({ code: 400, message: '公司名称不能为空' });
+        if (!entryType) return res.status(400).json({ code: 400, message: '请选择业务类型（客户/供应商）' });
+        if (!entityType) return res.status(400).json({ code: 400, message: '请选择主体类型（企业/个人）' });
+        if (!companyName) return res.status(400).json({ code: 400, message: '名称不能为空' });
         if (!idNumber) return res.status(400).json({ code: 400, message: '证件号不能为空' });
         if (!salesman) return res.status(400).json({ code: 400, message: '业务员姓名不能为空' });
         if (!assignedCompanies || assignedCompanies.length === 0) {
@@ -68,6 +73,7 @@ app.post('/api/customers', async (req, res) => {
 
         const newCustomer = new Customer({
             entryType,
+            entityType,
             companyName,
             idNumber,
             contactName: contactName || '',
@@ -87,13 +93,13 @@ app.post('/api/customers', async (req, res) => {
     }
 });
 
-// 2. 查询所有数据
 app.get('/api/customers', async (req, res) => {
     try {
         const customers = await Customer.find().sort({ createdAt: -1 });
         const data = customers.map(c => ({
             id: c._id,
             entryType: c.entryType,
+            entityType: c.entityType,
             companyName: c.companyName,
             idNumber: c.idNumber,
             contactName: c.contactName,
@@ -108,7 +114,6 @@ app.get('/api/customers', async (req, res) => {
     }
 });
 
-// 3. 删除数据
 app.delete('/api/customers/:id', async (req, res) => {
     try {
         const id = req.params.id;

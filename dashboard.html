@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>客户/供应商信息汇总（按天分组+导出+批量删除）</title>
+    <title>客户/供应商信息汇总</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -59,7 +59,6 @@
         }
         .select-all-label input { width: 18px; height: 18px; accent-color: #3498db; }
 
-        /* 按天分组卡片 */
         .day-group {
             max-width: 1200px;
             margin: 0 auto 24px;
@@ -106,6 +105,7 @@
             display: flex;
             align-items: center;
             gap: 10px;
+            flex-wrap: wrap;
         }
         /* 类型标签 */
         .type-tag {
@@ -115,10 +115,13 @@
             font-size: 13px;
             font-weight: 700;
             color: white;
-            background: #3498db; /* 默认蓝色 */
+            background: #3498db;
         }
-        .type-tag.supplier { background: #e67e22; } /* 供应商用橙色 */
-        .type-tag.customer { background: #2e86de; } /* 客户用亮蓝 */
+        .type-tag.supplier { background: #e67e22; }
+        .type-tag.customer { background: #2e86de; }
+        .type-tag.entity-enterprise { background: #1abc9c; }  /* 企业 - 绿色 */
+        .type-tag.entity-individual { background: #9b59b6; }  /* 个人 - 紫色 */
+
         .card-content .detail {
             display: flex;
             flex-wrap: wrap;
@@ -207,7 +210,6 @@
         }
     }
 
-    // 渲染按天分组
     function renderGroups(customers) {
         totalBadge.textContent = customers.length + ' 条';
 
@@ -235,12 +237,13 @@
             html += `<div class="day-header"><span>📅 ${dateKey}</span><span class="day-count">${items.length} 条</span></div>`;
             items.forEach(c => {
                 const timeStr = new Date(c.createdAt).toLocaleTimeString('zh-CN', { hour12: false });
-                // 类型标签
-                const typeClass = c.entryType === '供应商' ? 'supplier' : 'customer';
-                const typeLabel = c.entryType || '客户';
-                // 证件号显示
+                // 业务类型标签
+                const entryClass = c.entryType === '供应商' ? 'supplier' : 'customer';
+                const entryLabel = c.entryType || '客户';
+                // 主体类型标签（新增）
+                const entityClass = c.entityType === '个人' ? 'entity-individual' : 'entity-enterprise';
+                const entityLabel = c.entityType || '企业';
                 const idDisplay = c.idNumber || '未填';
-                // 分配公司标签
                 const companyTags = c.assignedCompanies.map(comp => `<span class="company-tag">${comp}</span>`).join(' ');
 
                 html += `
@@ -250,7 +253,8 @@
                         </div>
                         <div class="card-content">
                             <div class="company">
-                                <span class="type-tag ${typeClass}">${typeLabel}</span>
+                                <span class="type-tag ${entryClass}">${entryLabel}</span>
+                                <span class="type-tag ${entityClass}">${entityLabel}</span>
                                 🏢 ${escapeHtml(c.companyName)}
                             </div>
                             <div class="detail">
@@ -273,7 +277,6 @@
 
         container.innerHTML = html;
 
-        // 绑定单个删除事件
         document.querySelectorAll('.btn-del').forEach(btn => {
             btn.addEventListener('click', async function() {
                 const id = this.dataset.id;
@@ -284,7 +287,6 @@
             });
         });
 
-        // 绑定复选框事件，更新全选状态
         const checkboxes = document.querySelectorAll('.row-checkbox');
         checkboxes.forEach(cb => {
             cb.addEventListener('change', function() {
@@ -297,7 +299,6 @@
         });
     }
 
-    // 删除单个
     async function deleteItem(id) {
         try {
             const res = await fetch(`${API_URL}/${id}`, { method: 'DELETE' });
@@ -308,7 +309,6 @@
         }
     }
 
-    // 批量删除选中
     document.getElementById('batchDeleteBtn').addEventListener('click', async function() {
         const checkedIds = [];
         document.querySelectorAll('.row-checkbox:checked').forEach(cb => checkedIds.push(cb.value));
@@ -322,16 +322,13 @@
             return;
         }
 
-        // 禁用按钮防止重复点击
         this.disabled = true;
         this.textContent = '⏳ 删除中...';
 
         try {
-            // 循环删除（串行执行，避免并发问题）
             for (const id of checkedIds) {
                 await deleteItem(id);
             }
-            // 全部删除成功后刷新列表
             await loadData();
             alert(`✅ 成功删除 ${checkedIds.length} 条数据！`);
         } catch (err) {
@@ -342,7 +339,6 @@
         }
     });
 
-    // 导出选中到 Excel
     document.getElementById('exportBtn').addEventListener('click', function() {
         const checkedIds = [];
         document.querySelectorAll('.row-checkbox:checked').forEach(cb => checkedIds.push(cb.value));
@@ -360,11 +356,12 @@
         }
 
         const excelRows = selectedData.map(c => ({
-            '类型': c.entryType || '客户',
-            '公司名称': c.companyName,
+            '业务类型': c.entryType || '客户',
+            '主体类型': c.entityType || '企业',
+            '名称': c.companyName,
             '证件号': c.idNumber || '',
-            '客户姓名': c.contactName || '',
-            '客户电话': c.contactPhone || '',
+            '联系人姓名': c.contactName || '',
+            '联系人电话': c.contactPhone || '',
             '业务员': c.salesman,
             '分配公司': c.assignedCompanies.join('、'),
             '提交时间': new Date(c.createdAt).toLocaleString('zh-CN', { hour12: false })
@@ -384,7 +381,6 @@
     }
 
     document.getElementById('refreshBtn').addEventListener('click', loadData);
-
     loadData();
 </script>
 </body>

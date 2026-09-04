@@ -55,6 +55,7 @@
             display: flex;
             gap: 20px;
             margin-top: 4px;
+            flex-wrap: wrap;
         }
         .radio-group label {
             display: flex;
@@ -144,18 +145,27 @@
     </div>
 
     <div class="card">
-        <!-- 类型选择：客户 / 供应商 -->
+        <!-- 第一层：业务关系（客户 / 供应商） -->
         <div class="form-group">
-            <label>类型 <span class="required">*</span></label>
+            <label>业务类型 <span class="required">*</span></label>
             <div class="radio-group">
                 <label><input type="radio" name="entryType" value="客户" checked> 客户</label>
                 <label><input type="radio" name="entryType" value="供应商"> 供应商</label>
             </div>
         </div>
 
+        <!-- 第二层：主体类型（企业 / 个人） -->
         <div class="form-group">
-            <label>公司名称 <span class="required">*</span></label>
-            <input type="text" id="companyName" placeholder="例：XX科技有限公司" />
+            <label>主体类型 <span class="required">*</span></label>
+            <div class="radio-group">
+                <label><input type="radio" name="entityType" value="企业" checked> 企业</label>
+                <label><input type="radio" name="entityType" value="个人"> 个人</label>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>名称 <span class="required">*</span></label>
+            <input type="text" id="companyName" placeholder="企业名称 / 个人姓名" />
         </div>
 
         <!-- 统一社会信用代码（企业用） -->
@@ -171,11 +181,11 @@
         </div>
 
         <div class="form-group">
-            <label>客户姓名</label>
+            <label>联系人姓名</label>
             <input type="text" id="contactName" placeholder="联系人姓名（选填）" />
         </div>
         <div class="form-group">
-            <label>客户电话</label>
+            <label>联系人电话</label>
             <input type="tel" id="contactPhone" placeholder="手机号（选填）" />
         </div>
         <div class="form-group">
@@ -207,7 +217,8 @@
     const msg = document.getElementById('message');
 
     // DOM 元素
-    const typeRadios = document.querySelectorAll('input[name="entryType"]');
+    const entryTypeRadios = document.querySelectorAll('input[name="entryType"]');
+    const entityTypeRadios = document.querySelectorAll('input[name="entityType"]');
     const companyName = document.getElementById('companyName');
     const creditCode = document.getElementById('creditCode');
     const idCard = document.getElementById('idCard');
@@ -218,10 +229,10 @@
     const salesman = document.getElementById('salesman');
     const companyCheckboxes = document.querySelectorAll('#companyCheckboxes input[type="checkbox"]');
 
-    // 类型切换：显示/隐藏对应的证件输入框
-    typeRadios.forEach(radio => {
+    // 主体类型切换：显示/隐藏对应的证件输入框
+    entityTypeRadios.forEach(radio => {
         radio.addEventListener('change', function() {
-            if (this.value === '客户') {
+            if (this.value === '企业') {
                 creditCodeGroup.classList.remove('hidden');
                 idCardGroup.classList.add('hidden');
             } else {
@@ -238,37 +249,42 @@
         setTimeout(() => { msg.style.display = 'none'; }, 5000);
     }
 
-    // 身份证号简单校验（15位或18位，最后一位可以是X）
+    // 身份证号校验
     function isValidIdCard(value) {
         return /(^\d{15}$)|(^\d{18}$)|(^\d{17}(\d|X|x)$)/.test(value);
     }
 
-    // 统一社会信用代码简单校验（18位字母或数字）
+    // 统一社会信用代码校验
     function isValidCreditCode(value) {
         return /^[a-zA-Z0-9]{18}$/.test(value);
     }
 
     btn.addEventListener('click', async function() {
-        // 1. 获取类型
+        // 1. 获取业务类型（客户/供应商）
         let entryType = '客户';
-        typeRadios.forEach(r => { if (r.checked) entryType = r.value; });
+        entryTypeRadios.forEach(r => { if (r.checked) entryType = r.value; });
 
-        // 2. 获取证件号
+        // 2. 获取主体类型（企业/个人）
+        let entityType = '企业';
+        entityTypeRadios.forEach(r => { if (r.checked) entityType = r.value; });
+
+        // 3. 获取证件号
         let idNumber = '';
-        if (entryType === '客户') {
+        if (entityType === '企业') {
             idNumber = creditCode.value.trim();
         } else {
             idNumber = idCard.value.trim();
         }
 
-        // 3. 收集选中的公司
+        // 4. 收集选中的公司
         const assignedCompanies = [];
         companyCheckboxes.forEach(cb => {
             if (cb.checked) assignedCompanies.push(cb.value);
         });
 
         const data = {
-            entryType: entryType,
+            entryType: entryType,           // 客户 / 供应商
+            entityType: entityType,         // 企业 / 个人
             companyName: companyName.value.trim(),
             idNumber: idNumber,
             contactName: contactName.value.trim(),
@@ -278,18 +294,17 @@
         };
 
         // 前端校验
-        if (!data.companyName) { showMessage('❌ 请填写公司名称', 'error'); companyName.focus(); return; }
+        if (!data.companyName) { showMessage('❌ 请填写名称', 'error'); companyName.focus(); return; }
         if (!data.idNumber) {
-            const label = entryType === '客户' ? '统一社会信用代码' : '身份证号';
+            const label = entityType === '企业' ? '统一社会信用代码' : '身份证号';
             showMessage('❌ 请填写' + label, 'error');
             return;
         }
-        // 格式校验
-        if (entryType === '客户' && !isValidCreditCode(data.idNumber)) {
+        if (entityType === '企业' && !isValidCreditCode(data.idNumber)) {
             showMessage('❌ 统一社会信用代码格式不正确（需18位字母或数字）', 'error');
             return;
         }
-        if (entryType === '供应商' && !isValidIdCard(data.idNumber)) {
+        if (entityType === '个人' && !isValidIdCard(data.idNumber)) {
             showMessage('❌ 身份证号格式不正确（15位或18位，最后一位可为X）', 'error');
             return;
         }
