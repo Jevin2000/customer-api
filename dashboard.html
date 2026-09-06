@@ -4,51 +4,94 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>客户/供应商信息汇总</title>
-    <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js">
+    </script>
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body {
-            font-family: "Segoe UI", "PingFang SC", sans-serif;
-            background: #f5f7fa;
-            padding: 24px 20px;
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
         }
-        .header {
+
+        body {
+            font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+            background: #f5f7fa;
+            padding: 20px 16px 40px;
+            min-height: 100vh;
+        }
+
+        /* 顶部栏 */
+        .app-header {
+            max-width: 1200px;
+            margin: 0 auto 16px;
             display: flex;
             justify-content: space-between;
             align-items: center;
             flex-wrap: wrap;
-            max-width: 1200px;
-            margin: 0 auto 16px;
+            gap: 12px;
         }
-        .header h1 { color: #1a2a3a; font-size: 28px; }
-        .badge { background: #3498db; color: white; padding: 8px 20px; border-radius: 40px; font-weight: 700; }
+        .app-header h1 {
+            font-size: 24px;
+            color: #1a2a3a;
+        }
+        .app-header .badge {
+            background: #3498db;
+            color: white;
+            padding: 6px 18px;
+            border-radius: 40px;
+            font-weight: 700;
+            font-size: 15px;
+        }
+
+        /* 工具栏 */
         .toolbar {
             max-width: 1200px;
             margin: 0 auto 20px;
             display: flex;
-            gap: 12px;
             flex-wrap: wrap;
             align-items: center;
+            gap: 10px;
             background: white;
-            padding: 12px 20px;
-            border-radius: 12px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+            padding: 12px 18px;
+            border-radius: 14px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
         }
         .btn {
-            padding: 8px 24px;
+            padding: 7px 20px;
             border: none;
             border-radius: 30px;
-            font-size: 15px;
+            font-size: 14px;
             font-weight: 600;
             cursor: pointer;
             transition: 0.2s;
+            white-space: nowrap;
         }
-        .btn-refresh { background: #2ecc71; color: white; }
-        .btn-export { background: #f39c12; color: white; }
-        .btn-export:hover { background: #d68910; }
-        .btn-danger { background: #e74c3c; color: white; }
-        .btn-danger:hover { background: #c0392b; }
-        .btn-refresh:active, .btn-export:active, .btn-danger:active { transform: scale(0.97); }
+        .btn:active {
+            transform: scale(0.96);
+        }
+        .btn-refresh {
+            background: #2ecc71;
+            color: white;
+        }
+        .btn-export {
+            background: #f39c12;
+            color: white;
+        }
+        .btn-export:hover {
+            background: #d68910;
+        }
+        .btn-danger {
+            background: #e74c3c;
+            color: white;
+        }
+        .btn-danger:hover {
+            background: #c0392b;
+        }
+        .btn-danger:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
         .select-all-label {
             display: flex;
             align-items: center;
@@ -56,332 +99,528 @@
             font-size: 14px;
             color: #2c3e50;
             cursor: pointer;
+            margin-left: 4px;
         }
-        .select-all-label input { width: 18px; height: 18px; accent-color: #3498db; }
+        .select-all-label input {
+            width: 18px;
+            height: 18px;
+            accent-color: #3498db;
+        }
+        .toolbar .spacer {
+            flex: 1;
+            min-width: 20px;
+        }
+        .toolbar .hint-text {
+            font-size: 13px;
+            color: #8a9aa8;
+        }
 
+        /* 按天分组 */
         .day-group {
             max-width: 1200px;
-            margin: 0 auto 24px;
+            margin: 0 auto 20px;
             background: white;
             border-radius: 16px;
-            box-shadow: 0 2px 12px rgba(0,0,0,0.05);
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
             overflow: hidden;
         }
         .day-header {
-            background: #ecf0f1;
-            padding: 12px 24px;
-            font-size: 18px;
-            font-weight: 700;
-            color: #2c3e50;
+            background: #f0f2f5;
+            padding: 10px 20px;
             display: flex;
             justify-content: space-between;
-            border-bottom: 2px solid #dce1e8;
-        }
-        .day-count { background: #bdc3c7; padding: 2px 14px; border-radius: 30px; font-size: 14px; }
-        .customer-card {
-            display: flex;
             align-items: center;
-            padding: 14px 24px;
-            border-bottom: 1px solid #f0f2f5;
-            gap: 16px;
-            transition: 0.1s;
-        }
-        .customer-card:hover { background: #fafbfc; }
-        .customer-card:last-child { border-bottom: none; }
-        .customer-card .checkbox-wrap { flex-shrink: 0; }
-        .customer-card input[type="checkbox"] { width: 18px; height: 18px; accent-color: #3498db; cursor: pointer; }
-        .card-content {
-            flex: 1;
-            display: flex;
-            flex-wrap: wrap;
-            align-items: center;
-            gap: 10px 20px;
-        }
-        .card-content .company {
+            border-bottom: 1px solid #e4e7eb;
             font-weight: 700;
-            color: #1a2a3a;
+            color: #2c3e50;
             font-size: 16px;
-            min-width: 120px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            flex-wrap: wrap;
         }
-        /* 类型标签 */
-        .type-tag {
-            display: inline-block;
-            padding: 2px 12px;
+        .day-header .day-count {
+            background: #dce1e8;
+            padding: 2px 14px;
             border-radius: 30px;
             font-size: 13px;
-            font-weight: 700;
-            color: white;
-            background: #3498db;
+            font-weight: 600;
         }
-        .type-tag.supplier { background: #e67e22; }
-        .type-tag.customer { background: #2e86de; }
-        .type-tag.entity-enterprise { background: #1abc9c; }  /* 企业 - 绿色 */
-        .type-tag.entity-individual { background: #9b59b6; }  /* 个人 - 紫色 */
 
-        .card-content .detail {
+        /* 单条数据卡片（后台专用 - 清爽高效版） */
+        .customer-card {
+            display: flex;
+            align-items: stretch;
+            padding: 12px 16px 12px 20px;
+            border-bottom: 1px solid #f0f2f5;
+            gap: 14px;
+            transition: background 0.15s;
+        }
+        .customer-card:hover {
+            background: #fafbfc;
+        }
+        .customer-card:last-child {
+            border-bottom: none;
+        }
+
+        /* 复选框 */
+        .customer-card .checkbox-wrap {
+            display: flex;
+            align-items: center;
+            flex-shrink: 0;
+        }
+        .customer-card .checkbox-wrap input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            accent-color: #3498db;
+            cursor: pointer;
+        }
+
+        /* 主体信息 */
+        .card-main {
+            flex: 1;
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .card-main .row-top {
             display: flex;
             flex-wrap: wrap;
-            gap: 12px;
+            align-items: center;
+            gap: 8px 14px;
+        }
+        .card-main .row-top .name {
+            font-size: 18px;
+            font-weight: 700;
+            color: #1a2a3a;
+            word-break: break-word;
+        }
+        .card-main .row-bottom {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 8px 16px;
             font-size: 14px;
             color: #4a5a6a;
         }
-        .card-content .detail .tag {
-            background: #f0f4f8;
+
+        /* 标签统一 */
+        .tag {
+            display: inline-block;
             padding: 2px 12px;
             border-radius: 30px;
-            white-space: nowrap;
-        }
-        .card-content .detail .company-tag {
-            background: #d4e6f1;
-            color: #1a3a5a;
-            padding: 2px 12px;
-            border-radius: 30px;
-            font-weight: 600;
-            font-size: 13px;
-        }
-        .card-actions {
-            display: flex;
-            gap: 8px;
+            font-size: 12px;
+            font-weight: 700;
+            color: white;
+            line-height: 1.6;
             flex-shrink: 0;
         }
+        .tag.entry-customer {
+            background: #2e86de;
+        }
+        .tag.entry-supplier {
+            background: #e67e22;
+        }
+        .tag.entity-enterprise {
+            background: #1abc9c;
+        }
+        .tag.entity-individual {
+            background: #9b59b6;
+        }
+
+        .badge-id {
+            font-family: "SF Mono", "Menlo", monospace;
+            background: #ecf0f1;
+            padding: 0 8px;
+            border-radius: 4px;
+            color: #2c3e50;
+            font-size: 13px;
+        }
+        .detail-item {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            white-space: nowrap;
+        }
+        .detail-item .icon {
+            opacity: 0.6;
+        }
+        .company-tag-group {
+            display: inline-flex;
+            flex-wrap: wrap;
+            gap: 4px;
+        }
+        .company-tag-group .comp-tag {
+            background: #eaf2f8;
+            color: #1a3a5a;
+            padding: 0 10px;
+            border-radius: 30px;
+            font-size: 12px;
+            font-weight: 600;
+            line-height: 1.8;
+        }
+
+        /* 操作按钮 */
+        .card-actions {
+            display: flex;
+            align-items: center;
+            flex-shrink: 0;
+            gap: 6px;
+        }
         .btn-small {
-            padding: 4px 16px;
+            padding: 4px 14px;
             border: none;
             border-radius: 30px;
             font-size: 13px;
-            cursor: pointer;
             font-weight: 600;
+            cursor: pointer;
+            transition: 0.15s;
+            background: #f0f2f5;
+            color: #4a5a6a;
         }
-        .btn-del { background: #fde8e8; color: #b03a2e; }
-        .btn-del:hover { background: #e74c3c; color: white; }
-        .empty { text-align: center; padding: 60px 20px; color: #8a9aa8; font-size: 18px; }
-        .time-text { font-size: 13px; color: #95a5a6; }
-        .id-number { font-family: monospace; background: #ecf0f1; padding: 0 8px; border-radius: 4px; }
-        @media (max-width: 600px) {
-            .customer-card { flex-wrap: wrap; }
-            .card-content { width: 100%; }
-            .card-actions { width: 100%; justify-content: flex-end; }
+        .btn-small:hover {
+            background: #e4e7eb;
+        }
+        .btn-small.danger {
+            background: #fde8e8;
+            color: #b03a2e;
+        }
+        .btn-small.danger:hover {
+            background: #e74c3c;
+            color: white;
+        }
+
+        .empty-state {
+            max-width: 1200px;
+            margin: 60px auto;
+            text-align: center;
+            color: #8a9aa8;
+            font-size: 18px;
+        }
+
+        /* 移动端适配 */
+        @media (max-width: 640px) {
+            body {
+                padding: 12px 8px 30px;
+            }
+            .toolbar {
+                padding: 10px 12px;
+                gap: 8px;
+            }
+            .btn {
+                font-size: 13px;
+                padding: 6px 14px;
+            }
+            .customer-card {
+                padding: 12px 12px 12px 16px;
+                flex-wrap: wrap;
+            }
+            .card-main .row-top .name {
+                font-size: 16px;
+            }
+            .card-main .row-bottom {
+                font-size: 13px;
+                gap: 6px 12px;
+            }
+            .card-actions {
+                width: 100%;
+                justify-content: flex-end;
+                padding-top: 4px;
+                border-top: 1px solid #f0f2f5;
+            }
+            .day-header {
+                font-size: 15px;
+                padding: 8px 16px;
+            }
+            .app-header h1 {
+                font-size: 20px;
+            }
+        }
+
+        @media (max-width: 400px) {
+            .toolbar .hint-text {
+                display: none;
+            }
+            .customer-card .checkbox-wrap {
+                align-self: flex-start;
+                padding-top: 4px;
+            }
         }
     </style>
 </head>
 <body>
-<div class="header">
-    <h1>📊 客户/供应商汇总</h1>
-    <span class="badge" id="totalCount">0 条</span>
-</div>
-<div class="toolbar">
-    <button class="btn btn-refresh" id="refreshBtn">🔄 刷新</button>
-    <button class="btn btn-export" id="exportBtn">📥 导出选中到 Excel</button>
-    <button class="btn btn-danger" id="batchDeleteBtn">🗑️ 删除选中</button>
-    <label class="select-all-label">
-        <input type="checkbox" id="selectAllCheckbox"> 全选
-    </label>
-    <span style="color:#7f8c8d;font-size:14px;margin-left:auto;">🕒 按天分组，最新在前</span>
-</div>
 
-<div id="container">
-    <div class="empty">⏳ 加载数据中...</div>
-</div>
+    <!-- 顶部 -->
+    <div class="app-header">
+        <h1>📊 客户 / 供应商汇总</h1>
+        <span class="badge" id="totalCount">0 条</span>
+    </div>
 
-<script>
-    const API_URL = '/api/customers';
-    const container = document.getElementById('container');
-    const totalBadge = document.getElementById('totalCount');
-    const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+    <!-- 工具栏 -->
+    <div class="toolbar">
+        <button class="btn btn-refresh" id="refreshBtn">🔄 刷新</button>
+        <button class="btn btn-export" id="exportBtn">📥 导出选中</button>
+        <button class="btn btn-danger" id="batchDeleteBtn">🗑️ 删除选中</button>
+        <label class="select-all-label">
+            <input type="checkbox" id="selectAllCheckbox"> 全选
+        </label>
+        <span class="spacer"></span>
+        <span class="hint-text">🕒 按天分组 · 最新在前</span>
+    </div>
 
-    let currentCustomers = [];
+    <!-- 列表容器 -->
+    <div id="container">
+        <div class="empty-state">⏳ 加载数据中...</div>
+    </div>
 
-    async function loadData() {
-        try {
-            const res = await fetch(API_URL);
-            const result = await res.json();
-            if (result.code === 0) {
-                currentCustomers = result.data;
-                renderGroups(currentCustomers);
-            } else {
-                alert('加载失败：' + result.message);
+    <script>
+        (function() {
+            'use strict';
+
+            const API_URL = '/api/customers';
+            const container = document.getElementById('container');
+            const totalBadge = document.getElementById('totalCount');
+            const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+
+            let currentCustomers = [];
+
+            // 工具：防 XSS
+            function escapeHtml(str) {
+                if (!str) return '';
+                const div = document.createElement('div');
+                div.textContent = str;
+                return div.innerHTML;
             }
-        } catch (err) {
-            alert('❌ 连接不上服务器！请确认服务已启动');
-        }
-    }
 
-    function renderGroups(customers) {
-        totalBadge.textContent = customers.length + ' 条';
+            // 格式化时间
+            function formatTime(dateStr) {
+                try {
+                    const d = new Date(dateStr);
+                    return d.toLocaleTimeString('zh-CN', { hour12: false, hour: '2-digit', minute: '2-digit' });
+                } catch (_) { return ''; }
+            }
 
-        if (customers.length === 0) {
-            container.innerHTML = '<div class="empty">🎯 暂无数据</div>';
-            return;
-        }
+            // 格式化日期 key
+            function formatDateKey(dateStr) {
+                try {
+                    const d = new Date(dateStr);
+                    return `${d.getFullYear()}年${String(d.getMonth()+1).padStart(2,'0')}月${String(d.getDate()).padStart(2,'0')}日`;
+                } catch (_) { return ''; }
+            }
 
-        const groups = {};
-        customers.forEach(c => {
-            const dateObj = new Date(c.createdAt);
-            const dateKey = `${dateObj.getFullYear()}年${String(dateObj.getMonth()+1).padStart(2,'0')}月${String(dateObj.getDate()).padStart(2,'0')}日`;
-            if (!groups[dateKey]) groups[dateKey] = [];
-            groups[dateKey].push(c);
-        });
+            // 加载数据
+            async function loadData() {
+                try {
+                    const res = await fetch(API_URL);
+                    const result = await res.json();
+                    if (result.code === 0) {
+                        currentCustomers = result.data || [];
+                        renderGroups(currentCustomers);
+                    } else {
+                        alert('加载失败：' + result.message);
+                    }
+                } catch (err) {
+                    alert('❌ 连接服务器失败，请检查网络');
+                }
+            }
 
-        const sortedDates = Object.keys(groups).sort((a, b) => {
-            return a.localeCompare(b, 'zh-CN') * -1;
-        });
+            // 渲染
+            function renderGroups(customers) {
+                totalBadge.textContent = customers.length + ' 条';
 
-        let html = '';
-        sortedDates.forEach(dateKey => {
-            const items = groups[dateKey];
-            html += `<div class="day-group">`;
-            html += `<div class="day-header"><span>📅 ${dateKey}</span><span class="day-count">${items.length} 条</span></div>`;
-            items.forEach(c => {
-                const timeStr = new Date(c.createdAt).toLocaleTimeString('zh-CN', { hour12: false });
-                // 业务类型标签
-                const entryClass = c.entryType === '供应商' ? 'supplier' : 'customer';
-                const entryLabel = c.entryType || '客户';
-                // 主体类型标签（新增）
-                const entityClass = c.entityType === '个人' ? 'entity-individual' : 'entity-enterprise';
-                const entityLabel = c.entityType || '企业';
-                const idDisplay = c.idNumber || '未填';
-                const companyTags = c.assignedCompanies.map(comp => `<span class="company-tag">${comp}</span>`).join(' ');
+                if (customers.length === 0) {
+                    container.innerHTML = '<div class="empty-state">🎯 暂无数据</div>';
+                    return;
+                }
 
-                html += `
-                    <div class="customer-card" data-id="${c.id}">
-                        <div class="checkbox-wrap">
-                            <input type="checkbox" class="row-checkbox" value="${c.id}" />
-                        </div>
-                        <div class="card-content">
-                            <div class="company">
-                                <span class="type-tag ${entryClass}">${entryLabel}</span>
-                                <span class="type-tag ${entityClass}">${entityLabel}</span>
-                                🏢 ${escapeHtml(c.companyName)}
+                // 按天分组
+                const groups = {};
+                customers.forEach(c => {
+                    const key = formatDateKey(c.createdAt);
+                    if (!groups[key]) groups[key] = [];
+                    groups[key].push(c);
+                });
+
+                const sortedDates = Object.keys(groups).sort((a, b) => {
+                    return a.localeCompare(b, 'zh-CN') * -1;
+                });
+
+                let html = '';
+                sortedDates.forEach(dateKey => {
+                    const items = groups[dateKey];
+                    html += `<div class="day-group">`;
+                    html += `<div class="day-header"><span>📅 ${dateKey}</span><span class="day-count">${items.length} 条</span></div>`;
+
+                    items.forEach(c => {
+                        const id = c.id;
+                        const entryLabel = c.entryType || '客户';
+                        const entryClass = entryLabel === '供应商' ? 'supplier' : 'customer';
+                        const entityLabel = c.entityType || '企业';
+                        const entityClass = entityLabel === '个人' ? 'individual' : 'enterprise';
+                        const name = c.companyName || '未命名';
+                        const idNumber = c.idNumber || '';
+                        const contact = c.contactName || '未填';
+                        const phone = c.contactPhone || '未填';
+                        const salesman = c.salesman || '未填';
+                        const time = formatTime(c.createdAt);
+                        const companies = c.assignedCompanies || [];
+
+                        const companyTagsHtml = companies.map(comp =>
+                            `<span class="comp-tag">${escapeHtml(comp)}</span>`
+                        ).join('');
+
+                        html += `
+                            <div class="customer-card" data-id="${id}">
+                                <div class="checkbox-wrap">
+                                    <input type="checkbox" class="row-checkbox" value="${id}" />
+                                </div>
+                                <div class="card-main">
+                                    <div class="row-top">
+                                        <span class="tag entry-${entryClass}">${escapeHtml(entryLabel)}</span>
+                                        <span class="tag entity-${entityClass}">${escapeHtml(entityLabel)}</span>
+                                        <span class="name">${escapeHtml(name)}</span>
+                                    </div>
+                                    <div class="row-bottom">
+                                        <span class="detail-item">
+                                            <span class="icon">🆔</span>
+                                            <span class="badge-id">${escapeHtml(idNumber)}</span>
+                                        </span>
+                                        <span class="detail-item">
+                                            <span class="icon">👤</span> ${escapeHtml(contact)}
+                                        </span>
+                                        <span class="detail-item">
+                                            <span class="icon">📞</span> ${escapeHtml(phone)}
+                                        </span>
+                                        <span class="detail-item">
+                                            <span class="icon">👔</span> ${escapeHtml(salesman)}
+                                        </span>
+                                        <span class="detail-item">
+                                            <span class="icon">🕐</span> ${time}
+                                        </span>
+                                        <span class="detail-item company-tag-group">
+                                            ${companyTagsHtml}
+                                        </span>
+                                    </div>
+                                </div>
+                                <div class="card-actions">
+                                    <button class="btn-small danger btn-del" data-id="${id}">删除</button>
+                                </div>
                             </div>
-                            <div class="detail">
-                                <span class="tag"><span class="id-number">${escapeHtml(idDisplay)}</span></span>
-                                <span class="tag">📇 ${escapeHtml(c.contactName || '未填')}</span>
-                                <span class="tag">📞 ${escapeHtml(c.contactPhone || '未填')}</span>
-                                <span class="tag">👤 ${escapeHtml(c.salesman)}</span>
-                                <span class="time-text">🕐 ${timeStr}</span>
-                                <span>分配：${companyTags}</span>
-                            </div>
-                        </div>
-                        <div class="card-actions">
-                            <button class="btn-small btn-del" data-id="${c.id}">🗑️ 删除</button>
-                        </div>
-                    </div>
-                `;
-            });
-            html += `</div>`;
-        });
+                        `;
+                    });
 
-        container.innerHTML = html;
+                    html += `</div>`;
+                });
 
-        document.querySelectorAll('.btn-del').forEach(btn => {
-            btn.addEventListener('click', async function() {
-                const id = this.dataset.id;
-                if (confirm(`确定要删除这条记录吗？（删除后不可恢复）`)) {
-                    await deleteItem(id);
+                container.innerHTML = html;
+
+                // 绑定删除事件
+                document.querySelectorAll('.btn-del').forEach(btn => {
+                    btn.addEventListener('click', async function() {
+                        const id = this.dataset.id;
+                        if (confirm('确定要删除这条记录吗？此操作不可恢复！')) {
+                            await deleteItem(id);
+                            await loadData();
+                        }
+                    });
+                });
+
+                // 绑定复选框全选联动
+                const checkboxes = document.querySelectorAll('.row-checkbox');
+                checkboxes.forEach(cb => {
+                    cb.addEventListener('change', function() {
+                        const allChecked = Array.from(checkboxes).every(c => c.checked);
+                        selectAllCheckbox.checked = allChecked;
+                    });
+                });
+
+                selectAllCheckbox.addEventListener('change', function() {
+                    document.querySelectorAll('.row-checkbox').forEach(cb => cb.checked = this.checked);
+                });
+            }
+
+            // 删除单条
+            async function deleteItem(id) {
+                try {
+                    const res = await fetch(`${API_URL}/${id}`, { method: 'DELETE' });
+                    const result = await res.json();
+                    if (result.code !== 0) alert('删除失败：' + result.message);
+                } catch (err) {
+                    alert('删除请求失败');
+                }
+            }
+
+            // 批量删除
+            document.getElementById('batchDeleteBtn').addEventListener('click', async function() {
+                const checkedIds = [];
+                document.querySelectorAll('.row-checkbox:checked').forEach(cb => checkedIds.push(cb.value));
+
+                if (checkedIds.length === 0) {
+                    alert('请先勾选至少一条数据');
+                    return;
+                }
+
+                if (!confirm(`确定要删除选中的 ${checkedIds.length} 条数据吗？此操作不可恢复！`)) {
+                    return;
+                }
+
+                this.disabled = true;
+                this.textContent = '⏳ 删除中...';
+
+                try {
+                    for (const id of checkedIds) {
+                        await deleteItem(id);
+                    }
                     await loadData();
+                    alert(`✅ 成功删除 ${checkedIds.length} 条数据`);
+                } catch (err) {
+                    alert('❌ 删除过程出错，请刷新重试');
+                } finally {
+                    this.disabled = false;
+                    this.textContent = '🗑️ 删除选中';
                 }
             });
-        });
 
-        const checkboxes = document.querySelectorAll('.row-checkbox');
-        checkboxes.forEach(cb => {
-            cb.addEventListener('change', function() {
-                const allChecked = Array.from(checkboxes).every(c => c.checked);
-                selectAllCheckbox.checked = allChecked;
+            // 导出 Excel
+            document.getElementById('exportBtn').addEventListener('click', function() {
+                const checkedIds = [];
+                document.querySelectorAll('.row-checkbox:checked').forEach(cb => checkedIds.push(cb.value));
+
+                if (checkedIds.length === 0) {
+                    alert('请先勾选至少一条数据');
+                    return;
+                }
+
+                const selectedData = currentCustomers.filter(c => checkedIds.includes(c.id.toString()));
+                if (selectedData.length === 0) {
+                    alert('选中的数据不存在，请刷新重试');
+                    return;
+                }
+
+                const excelRows = selectedData.map(c => ({
+                    '业务类型': c.entryType || '客户',
+                    '主体类型': c.entityType || '企业',
+                    '名称': c.companyName || '',
+                    '证件号': c.idNumber || '',
+                    '联系人': c.contactName || '',
+                    '联系电话': c.contactPhone || '',
+                    '业务员': c.salesman || '',
+                    '分配公司': (c.assignedCompanies || []).join('、'),
+                    '提交时间': new Date(c.createdAt).toLocaleString('zh-CN', { hour12: false })
+                }));
+
+                const wb = XLSX.utils.book_new();
+                const ws = XLSX.utils.json_to_sheet(excelRows);
+                XLSX.utils.book_append_sheet(wb, ws, "客户供应商");
+                const now = new Date().toISOString().slice(0, 10);
+                XLSX.writeFile(wb, `客户供应商_${now}_${selectedData.length}条.xlsx`);
             });
-        });
-        selectAllCheckbox.addEventListener('change', function() {
-            document.querySelectorAll('.row-checkbox').forEach(cb => cb.checked = this.checked);
-        });
-    }
 
-    async function deleteItem(id) {
-        try {
-            const res = await fetch(`${API_URL}/${id}`, { method: 'DELETE' });
-            const result = await res.json();
-            if (result.code !== 0) alert('删除失败：' + result.message);
-        } catch (err) {
-            alert('删除请求失败');
-        }
-    }
+            // 刷新按钮
+            document.getElementById('refreshBtn').addEventListener('click', loadData);
 
-    document.getElementById('batchDeleteBtn').addEventListener('click', async function() {
-        const checkedIds = [];
-        document.querySelectorAll('.row-checkbox:checked').forEach(cb => checkedIds.push(cb.value));
+            // 启动
+            loadData();
 
-        if (checkedIds.length === 0) {
-            alert('请先勾选至少一条数据！');
-            return;
-        }
+        })();
+    </script>
 
-        if (!confirm(`确定要删除选中的 ${checkedIds.length} 条数据吗？此操作不可恢复！`)) {
-            return;
-        }
-
-        this.disabled = true;
-        this.textContent = '⏳ 删除中...';
-
-        try {
-            for (const id of checkedIds) {
-                await deleteItem(id);
-            }
-            await loadData();
-            alert(`✅ 成功删除 ${checkedIds.length} 条数据！`);
-        } catch (err) {
-            alert('❌ 删除过程中出现错误，请刷新后重试');
-        } finally {
-            this.disabled = false;
-            this.textContent = '🗑️ 删除选中';
-        }
-    });
-
-    document.getElementById('exportBtn').addEventListener('click', function() {
-        const checkedIds = [];
-        document.querySelectorAll('.row-checkbox:checked').forEach(cb => checkedIds.push(cb.value));
-
-        if (checkedIds.length === 0) {
-            alert('请先勾选至少一条数据！');
-            return;
-        }
-
-        const selectedData = currentCustomers.filter(c => checkedIds.includes(c.id.toString()));
-
-        if (selectedData.length === 0) {
-            alert('选中的数据不存在，请刷新重试');
-            return;
-        }
-
-        const excelRows = selectedData.map(c => ({
-            '业务类型': c.entryType || '客户',
-            '主体类型': c.entityType || '企业',
-            '名称': c.companyName,
-            '证件号': c.idNumber || '',
-            '联系人姓名': c.contactName || '',
-            '联系人电话': c.contactPhone || '',
-            '业务员': c.salesman,
-            '分配公司': c.assignedCompanies.join('、'),
-            '提交时间': new Date(c.createdAt).toLocaleString('zh-CN', { hour12: false })
-        }));
-
-        const wb = XLSX.utils.book_new();
-        const ws = XLSX.utils.json_to_sheet(excelRows);
-        XLSX.utils.book_append_sheet(wb, ws, "客户供应商");
-        const now = new Date().toISOString().slice(0,10);
-        XLSX.writeFile(wb, `客户供应商_${now}_${selectedData.length}条.xlsx`);
-    });
-
-    function escapeHtml(str) {
-        const div = document.createElement('div');
-        div.textContent = str;
-        return div.innerHTML;
-    }
-
-    document.getElementById('refreshBtn').addEventListener('click', loadData);
-    loadData();
-</script>
 </body>
 </html>

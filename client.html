@@ -5,342 +5,814 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>客户/供应商信息上报</title>
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
         body {
             font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
             background: #f0f4f8;
-            padding: 20px 16px 40px;
+            padding: 16px 16px 100px;
             min-height: 100vh;
         }
-        .container { max-width: 500px; margin: 0 auto; }
-        .header { text-align: center; padding: 20px 0 10px; color: #1a2a3a; }
-        .header h1 { font-size: 24px; font-weight: 700; }
-        .header p { color: #6b7a8a; font-size: 14px; margin-top: 4px; }
+        .container {
+            max-width: 500px;
+            margin: 0 auto;
+        }
+
+        /* 头部 */
+        .header {
+            padding: 12px 0 6px;
+        }
+        .header h1 {
+            font-size: 22px;
+            font-weight: 700;
+            color: #1a2a3a;
+        }
+        .header .sub {
+            font-size: 13px;
+            color: #7f8c8d;
+            margin-top: 2px;
+        }
+
+        /* 进度条 */
+        .progress-bar {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 12px 0 16px;
+            font-size: 13px;
+            color: #5a6a7a;
+        }
+        .progress-bar .track {
+            flex: 1;
+            height: 4px;
+            background: #dce1e8;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .progress-bar .track .fill {
+            height: 100%;
+            background: #3498db;
+            border-radius: 4px;
+            transition: width 0.3s;
+            width: 0%;
+        }
+        .progress-bar .label {
+            font-weight: 600;
+            color: #2c3e50;
+            white-space: nowrap;
+            min-width: 70px;
+            text-align: right;
+        }
+
         .card {
             background: #ffffff;
             border-radius: 16px;
-            padding: 24px 20px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.06);
-            margin-top: 16px;
+            padding: 20px 18px;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+            margin-bottom: 16px;
         }
-        .form-group { margin-bottom: 18px; }
-        .form-group label {
-            display: block;
-            font-size: 15px;
+
+        /* 分段选择器 */
+        .segmented-group {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+        .segmented-item {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .segmented-item .seg-label {
+            font-size: 14px;
             font-weight: 600;
             color: #2c3e50;
-            margin-bottom: 6px;
         }
-        .form-group label .required { color: #e74c3c; margin-left: 2px; }
-        .form-group input {
+        .segmented-item .seg-label .required {
+            color: #e74c3c;
+        }
+        .segmented-control {
+            display: flex;
+            background: #f0f2f5;
+            border-radius: 10px;
+            padding: 3px;
+            gap: 3px;
+        }
+        .segmented-control .seg-option {
+            flex: 1;
+            padding: 10px 0;
+            text-align: center;
+            font-size: 15px;
+            font-weight: 600;
+            color: #5a6a7a;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.25s;
+            border: none;
+            background: transparent;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+        }
+        .segmented-control .seg-option.active {
+            background: #ffffff;
+            color: #1a2a3a;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        }
+        .segmented-control .seg-option:active {
+            transform: scale(0.97);
+        }
+
+        /* 表单字段 */
+        .form-group {
+            margin-bottom: 16px;
+        }
+        .form-group:last-of-type {
+            margin-bottom: 0;
+        }
+        .form-group label {
+            display: block;
+            font-size: 14px;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 4px;
+        }
+        .form-group label .required {
+            color: #e74c3c;
+            margin-left: 2px;
+        }
+        .form-group .hint {
+            font-size: 12px;
+            color: #8a9aa8;
+            font-weight: 400;
+            margin-left: 6px;
+        }
+        .form-group input,
+        .form-group select {
             width: 100%;
-            padding: 14px 16px;
+            padding: 12px 14px;
             font-size: 16px;
             border: 1.5px solid #dce1e8;
-            border-radius: 12px;
+            border-radius: 10px;
             background: #fafbfc;
             transition: 0.2s;
             color: #1a2a3a;
+            outline: none;
+            -webkit-appearance: none;
         }
         .form-group input:focus {
             border-color: #3498db;
             background: #ffffff;
-            outline: none;
-            box-shadow: 0 0 0 4px rgba(52,152,219,0.15);
+            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.12);
         }
-        .form-group input::placeholder { color: #b0bcc8; font-size: 15px; }
-        
-        /* 单选按钮组 */
-        .radio-group {
-            display: flex;
-            gap: 20px;
+        .form-group input::placeholder {
+            color: #b0bcc8;
+            font-size: 15px;
+        }
+        .form-group input.error {
+            border-color: #e74c3c;
+            background: #fef6f6;
+        }
+        .form-group .error-msg {
+            font-size: 13px;
+            color: #e74c3c;
             margin-top: 4px;
-            flex-wrap: wrap;
+            display: none;
         }
-        .radio-group label {
+        .form-group .error-msg.show {
+            display: block;
+        }
+
+        /* 业务员字段 - 锁定样式 */
+        .form-group .input-locked {
             display: flex;
             align-items: center;
-            gap: 8px;
-            font-weight: 400;
-            font-size: 16px;
-            cursor: pointer;
-            color: #2c3e50;
+            background: #f0f2f5;
+            border-radius: 10px;
+            padding: 0 14px;
+            border: 1.5px solid #dce1e8;
         }
-        .radio-group input[type="radio"] {
+        .form-group .input-locked input {
+            border: none;
+            background: transparent;
+            padding: 12px 0;
+            flex: 1;
+        }
+        .form-group .input-locked input:focus {
+            box-shadow: none;
+        }
+        .form-group .input-locked .lock-icon {
+            color: #8a9aa8;
+            font-size: 16px;
+            padding-left: 6px;
+        }
+
+        /* 分配公司 - 列表式多选 */
+        .company-list {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            margin-top: 4px;
+        }
+        .company-list label {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 14px;
+            border-radius: 10px;
+            background: #fafbfc;
+            border: 1.5px solid #eef0f2;
+            cursor: pointer;
+            transition: 0.15s;
+            font-weight: 400;
+            font-size: 15px;
+            color: #2c3e50;
+            margin: 0;
+        }
+        .company-list label:active {
+            transform: scale(0.98);
+        }
+        .company-list label:has(input:checked) {
+            background: #ebf5fb;
+            border-color: #3498db;
+        }
+        .company-list input[type="checkbox"] {
             width: 20px;
             height: 20px;
             accent-color: #3498db;
+            flex-shrink: 0;
             margin: 0;
         }
-
-        /* 复选框区域 */
-        .checkbox-group {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-            margin-top: 4px;
-        }
-        .checkbox-group label {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            background: #f4f7fa;
-            padding: 8px 16px;
-            border-radius: 30px;
+        .company-list .multi-hint {
+            font-size: 13px;
+            color: #8a9aa8;
             font-weight: 400;
-            font-size: 15px;
-            cursor: pointer;
-            border: 1.5px solid transparent;
-            transition: 0.2s;
-            color: #2c3e50;
-        }
-        .checkbox-group label:has(input:checked) {
-            background: #d4e6f1;
-            border-color: #3498db;
-            color: #1a3a5a;
-        }
-        .checkbox-group input[type="checkbox"] {
-            width: 18px;
-            height: 18px;
-            accent-color: #3498db;
-            margin: 0;
+            padding: 4px 0 0 4px;
         }
 
-        .btn-submit {
+        /* 底部固定提交栏 */
+        .submit-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+            background: rgba(255, 255, 255, 0.92);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-top: 1px solid rgba(0, 0, 0, 0.05);
+            z-index: 100;
+            box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.04);
+        }
+        .submit-bar .btn-submit {
             width: 100%;
-            padding: 16px;
-            font-size: 20px;
+            padding: 14px;
+            font-size: 18px;
             font-weight: 700;
             background: #3498db;
             color: white;
             border: none;
-            border-radius: 14px;
+            border-radius: 12px;
             cursor: pointer;
             transition: 0.2s;
-            margin-top: 8px;
-            letter-spacing: 2px;
-            box-shadow: 0 4px 12px rgba(52,152,219,0.3);
+            letter-spacing: 1px;
+            box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3);
         }
-        .btn-submit:active { transform: scale(0.97); background: #2176ae; }
-        .btn-submit:disabled { background: #a0b8cc; box-shadow: none; }
-        #message {
-            margin-top: 16px;
-            padding: 14px;
-            border-radius: 12px;
-            font-size: 16px;
+        .submit-bar .btn-submit:active {
+            transform: scale(0.97);
+            background: #2176ae;
+        }
+        .submit-bar .btn-submit:disabled {
+            background: #a0b8cc;
+            box-shadow: none;
+        }
+        .submit-bar .btn-submit.success {
+            background: #2ecc71;
+            box-shadow: 0 4px 12px rgba(46, 204, 113, 0.3);
+        }
+        .submit-bar .footer-tip {
             text-align: center;
-            display: none;
+            font-size: 12px;
+            color: #8a9aa8;
+            margin-top: 8px;
         }
-        #message.success { display: block; background: #e8f8f0; color: #1a7a4a; border: 1px solid #b8e0cc; }
-        #message.error { display: block; background: #fde8e8; color: #b03a2e; border: 1px solid #f5c8c8; }
-        .footer-tip { text-align: center; color: #8a9aa8; font-size: 13px; margin-top: 24px; padding: 10px; }
-        .hidden { display: none !important; }
+        .submit-bar .footer-tip strong {
+            color: #5a6a7a;
+        }
+
+        /* Toast 消息 */
+        #toast {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-20px);
+            padding: 12px 24px;
+            border-radius: 12px;
+            font-size: 15px;
+            font-weight: 600;
+            color: white;
+            z-index: 200;
+            opacity: 0;
+            transition: all 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+            pointer-events: none;
+            max-width: 90%;
+            text-align: center;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
+        }
+        #toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+        #toast.success {
+            background: #2ecc71;
+        }
+        #toast.error {
+            background: #e74c3c;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        /* 简短提示动画 */
+        @keyframes fadeSlideUp {
+            from {
+                opacity: 0;
+                transform: translateY(8px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        .card {
+            animation: fadeSlideUp 0.3s ease-out;
+        }
     </style>
 </head>
 <body>
-<div class="container">
-    <div class="header">
-        <h1>📋 客户/供应商信息上报</h1>
-        <p>请业务员如实填写，周一统一汇总</p>
+
+    <div class="container">
+        <!-- 头部 -->
+        <div class="header">
+            <h1>📋 客户/供应商信息</h1>
+            <div class="sub">请业务员如实填写，信息将统一汇总</div>
+        </div>
+
+        <!-- 进度条 -->
+        <div class="progress-bar">
+            <span>填写进度</span>
+            <div class="track">
+                <div class="fill" id="progressFill" style="width:0%;"></div>
+            </div>
+            <span class="label" id="progressLabel">0/7</span>
+        </div>
+
+        <!-- 表单卡片 -->
+        <div class="card">
+            <!-- 1. 业务类型 + 主体类型：Segmented Control -->
+            <div class="segmented-group">
+                <div class="segmented-item">
+                    <div class="seg-label">业务类型 <span class="required">*</span></div>
+                    <div class="segmented-control" id="entryTypeControl">
+                        <button class="seg-option active" data-value="客户">客户</button>
+                        <button class="seg-option" data-value="供应商">供应商</button>
+                    </div>
+                </div>
+                <div class="segmented-item">
+                    <div class="seg-label">主体类型 <span class="required">*</span></div>
+                    <div class="segmented-control" id="entityTypeControl">
+                        <button class="seg-option active" data-value="企业">企业</button>
+                        <button class="seg-option" data-value="个人">个人</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 动态字段卡片 -->
+        <div class="card">
+            <!-- 名称字段（动态标签） -->
+            <div class="form-group">
+                <label id="nameLabel">企业名称 <span class="required">*</span></label>
+                <input type="text" id="companyName" placeholder="请输入企业名称" autocomplete="off" />
+                <div class="error-msg" id="nameError"></div>
+            </div>
+
+            <!-- 证件号字段（动态切换） -->
+            <div class="form-group" id="idGroup">
+                <label id="idLabel">统一社会信用代码 <span class="required">*</span></label>
+                <input type="text" id="idNumber" placeholder="请输入18位统一社会信用代码" autocomplete="off" maxlength="18" />
+                <div class="error-msg" id="idError">格式不正确，请输入18位字母或数字</div>
+            </div>
+
+            <!-- 联系人 -->
+            <div class="form-group">
+                <label>联系人 <span class="hint">（选填）</span></label>
+                <input type="text" id="contactName" placeholder="请输入联系人姓名" autocomplete="off" />
+            </div>
+
+            <!-- 联系电话 -->
+            <div class="form-group">
+                <label>联系电话 <span class="hint">（选填）</span></label>
+                <input type="tel" id="contactPhone" placeholder="请输入手机号码" autocomplete="off" />
+            </div>
+
+            <!-- 业务员姓名（自动获取 + 锁定） -->
+            <div class="form-group">
+                <label>业务员 <span class="required">*</span></label>
+                <div class="input-locked">
+                    <input type="text" id="salesman" placeholder="请填写你的全名" autocomplete="off" />
+                    <span class="lock-icon">🔒</span>
+                </div>
+                <div class="error-msg" id="salesmanError"></div>
+            </div>
+        </div>
+
+        <!-- 分配公司卡片 -->
+        <div class="card">
+            <div class="form-group">
+                <label>分配公司 <span class="required">*</span> <span class="hint">（可多选）</span></label>
+                <div class="company-list" id="companyList">
+                    <label><input type="checkbox" value="兴平面粉"> 兴平面粉</label>
+                    <label><input type="checkbox" value="富平面粉"> 富平面粉</label>
+                    <label><input type="checkbox" value="工业公司"> 工业公司</label>
+                    <label><input type="checkbox" value="米业公司"> 米业公司</label>
+                    <label><input type="checkbox" value="黑龙江米业"> 黑龙江米业</label>
+                    <div class="multi-hint">💡 可同时选择多个公司</div>
+                </div>
+                <div class="error-msg" id="companyError">请至少选择一个分配公司</div>
+            </div>
+        </div>
+
+        <!-- 底部占位（防止被固定栏遮挡） -->
+        <div style="height: 20px;"></div>
     </div>
 
-    <div class="card">
-        <!-- 第一层：业务关系（客户 / 供应商） -->
-        <div class="form-group">
-            <label>业务类型 <span class="required">*</span></label>
-            <div class="radio-group">
-                <label><input type="radio" name="entryType" value="客户" checked> 客户</label>
-                <label><input type="radio" name="entryType" value="供应商"> 供应商</label>
-            </div>
-        </div>
+    <!-- Toast -->
+    <div id="toast"></div>
 
-        <!-- 第二层：主体类型（企业 / 个人） -->
-        <div class="form-group">
-            <label>主体类型 <span class="required">*</span></label>
-            <div class="radio-group">
-                <label><input type="radio" name="entityType" value="企业" checked> 企业</label>
-                <label><input type="radio" name="entityType" value="个人"> 个人</label>
-            </div>
-        </div>
-
-        <div class="form-group">
-            <label>名称 <span class="required">*</span></label>
-            <input type="text" id="companyName" placeholder="企业名称 / 个人姓名" />
-        </div>
-
-        <!-- 统一社会信用代码（企业用） -->
-        <div class="form-group" id="creditCodeGroup">
-            <label>统一社会信用代码 <span class="required">*</span></label>
-            <input type="text" id="creditCode" placeholder="18位代码（必填）" />
-        </div>
-
-        <!-- 身份证号（个人用） -->
-        <div class="form-group hidden" id="idCardGroup">
-            <label>身份证号 <span class="required">*</span></label>
-            <input type="text" id="idCard" placeholder="15或18位身份证号（必填）" />
-        </div>
-
-        <div class="form-group">
-            <label>联系人姓名</label>
-            <input type="text" id="contactName" placeholder="联系人姓名（选填）" />
-        </div>
-        <div class="form-group">
-            <label>联系人电话</label>
-            <input type="tel" id="contactPhone" placeholder="手机号（选填）" />
-        </div>
-        <div class="form-group">
-            <label>业务员姓名 <span class="required">*</span></label>
-            <input type="text" id="salesman" placeholder="请填写你的全名" />
-        </div>
-
-        <!-- 分配公司 -->
-        <div class="form-group">
-            <label>分配公司 <span class="required">*</span></label>
-            <div class="checkbox-group" id="companyCheckboxes">
-                <label><input type="checkbox" value="兴平面粉"> 兴平面粉</label>
-                <label><input type="checkbox" value="富平面粉"> 富平面粉</label>
-                <label><input type="checkbox" value="工业公司"> 工业公司</label>
-                <label><input type="checkbox" value="米业公司"> 米业公司</label>
-                <label><input type="checkbox" value="黑龙江米业"> 黑龙江米业</label>
-            </div>
-        </div>
-
-        <button class="btn-submit" id="btnSubmit">✅ 提交信息</button>
-        <div id="message"></div>
+    <!-- 底部固定提交栏 -->
+    <div class="submit-bar">
+        <button class="btn-submit" id="btnSubmit">📤 提交信息</button>
+        <div class="footer-tip"><strong>提交后系统会自动保存</strong>，请勿重复点击</div>
     </div>
-    <div class="footer-tip">提交后数据将自动保存，请勿重复提交</div>
-</div>
 
-<script>
-    const API_URL = '/api/customers';
-    const btn = document.getElementById('btnSubmit');
-    const msg = document.getElementById('message');
+    <script>
+        (function() {
+            'use strict';
 
-    // DOM 元素
-    const entryTypeRadios = document.querySelectorAll('input[name="entryType"]');
-    const entityTypeRadios = document.querySelectorAll('input[name="entityType"]');
-    const companyName = document.getElementById('companyName');
-    const creditCode = document.getElementById('creditCode');
-    const idCard = document.getElementById('idCard');
-    const creditCodeGroup = document.getElementById('creditCodeGroup');
-    const idCardGroup = document.getElementById('idCardGroup');
-    const contactName = document.getElementById('contactName');
-    const contactPhone = document.getElementById('contactPhone');
-    const salesman = document.getElementById('salesman');
-    const companyCheckboxes = document.querySelectorAll('#companyCheckboxes input[type="checkbox"]');
+            // ─── DOM 引用 ───
+            const entryControl = document.getElementById('entryTypeControl');
+            const entityControl = document.getElementById('entityTypeControl');
+            const companyName = document.getElementById('companyName');
+            const idNumber = document.getElementById('idNumber');
+            const idGroup = document.getElementById('idGroup');
+            const idLabel = document.getElementById('idLabel');
+            const nameLabel = document.getElementById('nameLabel');
+            const contactName = document.getElementById('contactName');
+            const contactPhone = document.getElementById('contactPhone');
+            const salesman = document.getElementById('salesman');
+            const companyCheckboxes = document.querySelectorAll('#companyList input[type="checkbox"]');
+            const btnSubmit = document.getElementById('btnSubmit');
+            const toast = document.getElementById('toast');
+            const progressFill = document.getElementById('progressFill');
+            const progressLabel = document.getElementById('progressLabel');
 
-    // 主体类型切换：显示/隐藏对应的证件输入框
-    entityTypeRadios.forEach(radio => {
-        radio.addEventListener('change', function() {
-            if (this.value === '企业') {
-                creditCodeGroup.classList.remove('hidden');
-                idCardGroup.classList.add('hidden');
-            } else {
-                creditCodeGroup.classList.add('hidden');
-                idCardGroup.classList.remove('hidden');
+            // 错误提示元素
+            const nameError = document.getElementById('nameError');
+            const idError = document.getElementById('idError');
+            const salesmanError = document.getElementById('salesmanError');
+            const companyError = document.getElementById('companyError');
+
+            // ─── 状态 ───
+            let entryType = '客户';
+            let entityType = '企业';
+
+            // ─── 工具函数 ───
+            function showToast(text, type = 'success', duration = 2500) {
+                toast.textContent = text;
+                toast.className = type + ' show';
+                clearTimeout(toast._hideTimer);
+                toast._hideTimer = setTimeout(() => {
+                    toast.classList.remove('show');
+                }, duration);
             }
-        });
-    });
 
-    function showMessage(text, type) {
-        msg.textContent = text;
-        msg.className = type;
-        msg.style.display = 'block';
-        setTimeout(() => { msg.style.display = 'none'; }, 5000);
-    }
+            function updateProgress() {
+                // 必填字段列表
+                const fields = [
+                    companyName.value.trim(),
+                    idNumber.value.trim(),
+                    salesman.value.trim(),
+                    ...Array.from(companyCheckboxes).filter(cb => cb.checked)
+                ];
+                // 必填总数：名称、证件号、业务员 + 至少一个公司 = 4项
+                // 但证件号我们按有值算
+                let filled = 0;
+                if (companyName.value.trim()) filled++;
+                if (idNumber.value.trim()) filled++;
+                if (salesman.value.trim()) filled++;
+                const hasCompany = Array.from(companyCheckboxes).some(cb => cb.checked);
+                if (hasCompany) filled++;
 
-    // 身份证号校验
-    function isValidIdCard(value) {
-        return /(^\d{15}$)|(^\d{18}$)|(^\d{17}(\d|X|x)$)/.test(value);
-    }
+                const total = 4;
+                const pct = Math.min(100, Math.round((filled / total) * 100));
+                progressFill.style.width = pct + '%';
+                progressLabel.textContent = filled + '/' + total;
+            }
 
-    // 统一社会信用代码校验
-    function isValidCreditCode(value) {
-        return /^[a-zA-Z0-9]{18}$/.test(value);
-    }
+            // 切换主体类型：更新标签和占位符
+            function updateEntityType() {
+                if (entityType === '企业') {
+                    nameLabel.innerHTML = '企业名称 <span class="required">*</span>';
+                    companyName.placeholder = '请输入企业名称';
+                    idLabel.innerHTML = '统一社会信用代码 <span class="required">*</span>';
+                    idNumber.placeholder = '请输入18位统一社会信用代码';
+                    idNumber.maxLength = 18;
+                    idNumber.value = idNumber.value.replace(/\s/g, '');
+                    // 清除身份证相关的错误
+                    idError.textContent = '格式不正确，请输入18位字母或数字';
+                } else {
+                    nameLabel.innerHTML = '姓名 <span class="required">*</span>';
+                    companyName.placeholder = '请输入个人姓名';
+                    idLabel.innerHTML = '身份证号 <span class="required">*</span>';
+                    idNumber.placeholder = '请输入15或18位身份证号';
+                    idNumber.maxLength = 18;
+                    idNumber.value = idNumber.value.replace(/\s/g, '');
+                    idError.textContent = '格式不正确，请输入15位或18位身份证号（末位可为X）';
+                }
+                // 清除错误状态
+                clearFieldError(idNumber, idError);
+                clearFieldError(companyName, nameError);
+                updateProgress();
+            }
 
-    btn.addEventListener('click', async function() {
-        // 1. 获取业务类型（客户/供应商）
-        let entryType = '客户';
-        entryTypeRadios.forEach(r => { if (r.checked) entryType = r.value; });
+            // 清除字段错误状态
+            function clearFieldError(input, errorEl) {
+                input.classList.remove('error');
+                if (errorEl) errorEl.classList.remove('show');
+            }
 
-        // 2. 获取主体类型（企业/个人）
-        let entityType = '企业';
-        entityTypeRadios.forEach(r => { if (r.checked) entityType = r.value; });
+            // 显示字段错误
+            function showFieldError(input, errorEl) {
+                input.classList.add('error');
+                if (errorEl) errorEl.classList.add('show');
+            }
 
-        // 3. 获取证件号
-        let idNumber = '';
-        if (entityType === '企业') {
-            idNumber = creditCode.value.trim();
-        } else {
-            idNumber = idCard.value.trim();
-        }
+            // ─── 校验函数 ───
+            function validateCreditCode(val) {
+                return /^[a-zA-Z0-9]{18}$/.test(val);
+            }
 
-        // 4. 收集选中的公司
-        const assignedCompanies = [];
-        companyCheckboxes.forEach(cb => {
-            if (cb.checked) assignedCompanies.push(cb.value);
-        });
+            function validateIdCard(val) {
+                return /(^\d{15}$)|(^\d{18}$)|(^\d{17}(\d|X|x)$)/.test(val);
+            }
 
-        const data = {
-            entryType: entryType,           // 客户 / 供应商
-            entityType: entityType,         // 企业 / 个人
-            companyName: companyName.value.trim(),
-            idNumber: idNumber,
-            contactName: contactName.value.trim(),
-            contactPhone: contactPhone.value.trim(),
-            salesman: salesman.value.trim(),
-            assignedCompanies: assignedCompanies
-        };
+            function validateForm() {
+                let isValid = true;
 
-        // 前端校验
-        if (!data.companyName) { showMessage('❌ 请填写名称', 'error'); companyName.focus(); return; }
-        if (!data.idNumber) {
-            const label = entityType === '企业' ? '统一社会信用代码' : '身份证号';
-            showMessage('❌ 请填写' + label, 'error');
-            return;
-        }
-        if (entityType === '企业' && !isValidCreditCode(data.idNumber)) {
-            showMessage('❌ 统一社会信用代码格式不正确（需18位字母或数字）', 'error');
-            return;
-        }
-        if (entityType === '个人' && !isValidIdCard(data.idNumber)) {
-            showMessage('❌ 身份证号格式不正确（15位或18位，最后一位可为X）', 'error');
-            return;
-        }
-        if (!data.salesman) { showMessage('❌ 请填写业务员姓名', 'error'); salesman.focus(); return; }
-        if (data.assignedCompanies.length === 0) { showMessage('❌ 请至少选择一个分配公司', 'error'); return; }
+                // 1. 名称
+                const nameVal = companyName.value.trim();
+                if (!nameVal) {
+                    showFieldError(companyName, nameError);
+                    nameError.textContent = '请填写' + (entityType === '企业' ? '企业名称' : '姓名');
+                    isValid = false;
+                } else {
+                    clearFieldError(companyName, nameError);
+                }
 
-        btn.disabled = true;
-        btn.textContent = '⏳ 提交中...';
+                // 2. 证件号
+                const idVal = idNumber.value.trim().toUpperCase();
+                idNumber.value = idVal;
+                let idValid = false;
+                if (entityType === '企业') {
+                    idValid = validateCreditCode(idVal);
+                } else {
+                    idValid = validateIdCard(idVal);
+                }
+                if (!idVal || !idValid) {
+                    showFieldError(idNumber, idError);
+                    isValid = false;
+                } else {
+                    clearFieldError(idNumber, idError);
+                }
 
-        try {
-            const response = await fetch(API_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
+                // 3. 业务员
+                const salesmanVal = salesman.value.trim();
+                if (!salesmanVal) {
+                    showFieldError(salesman, salesmanError);
+                    salesmanError.textContent = '请填写业务员姓名';
+                    isValid = false;
+                } else {
+                    clearFieldError(salesman, salesmanError);
+                }
+
+                // 4. 分配公司
+                const hasCompany = Array.from(companyCheckboxes).some(cb => cb.checked);
+                if (!hasCompany) {
+                    companyError.classList.add('show');
+                    isValid = false;
+                } else {
+                    companyError.classList.remove('show');
+                }
+
+                updateProgress();
+                return isValid;
+            }
+
+            // ─── 实时校验（输入时触发） ───
+            companyName.addEventListener('input', function() {
+                if (this.value.trim()) {
+                    clearFieldError(this, nameError);
+                }
+                updateProgress();
             });
-            const result = await response.json();
 
-            if (result.code === 0) {
-                showMessage('✅ ' + result.message + '，感谢上报！', 'success');
-                companyName.value = '';
-                creditCode.value = '';
-                idCard.value = '';
-                contactName.value = '';
-                contactPhone.value = '';
-                salesman.value = '';
-                companyCheckboxes.forEach(cb => cb.checked = false);
-            } else {
-                showMessage('❌ 提交失败：' + result.message, 'error');
+            idNumber.addEventListener('input', function() {
+                let val = this.value.toUpperCase();
+                this.value = val;
+                // 实时校验
+                let valid = false;
+                if (entityType === '企业') {
+                    valid = validateCreditCode(val);
+                } else {
+                    valid = validateIdCard(val);
+                }
+                if (val && !valid) {
+                    showFieldError(this, idError);
+                } else {
+                    clearFieldError(this, idError);
+                }
+                updateProgress();
+            });
+
+            salesman.addEventListener('input', function() {
+                if (this.value.trim()) {
+                    clearFieldError(this, salesmanError);
+                }
+                updateProgress();
+            });
+
+            companyCheckboxes.forEach(cb => {
+                cb.addEventListener('change', function() {
+                    const hasCompany = Array.from(companyCheckboxes).some(c => c.checked);
+                    if (hasCompany) {
+                        companyError.classList.remove('show');
+                    }
+                    updateProgress();
+                });
+            });
+
+            // ─── Segmented Control 逻辑 ───
+            function setupSegmented(control, callback) {
+                const options = control.querySelectorAll('.seg-option');
+                options.forEach(opt => {
+                    opt.addEventListener('click', function() {
+                        options.forEach(o => o.classList.remove('active'));
+                        this.classList.add('active');
+                        const val = this.dataset.value;
+                        callback(val);
+                    });
+                });
             }
-        } catch (err) {
-            showMessage('❌ 网络连接失败，请检查网络', 'error');
-        }
 
-        btn.disabled = false;
-        btn.textContent = '✅ 提交信息';
-    });
-</script>
+            setupSegmented(entryControl, function(val) {
+                entryType = val;
+            });
+
+            setupSegmented(entityControl, function(val) {
+                entityType = val;
+                updateEntityType();
+            });
+
+            // ─── 业务员自动获取 ───
+            function initSalesman() {
+                // 1. 优先从 URL 参数获取
+                const params = new URLSearchParams(window.location.search);
+                const urlSalesman = params.get('salesman');
+                if (urlSalesman && urlSalesman.trim()) {
+                    salesman.value = urlSalesman.trim();
+                    salesman.disabled = true;
+                    salesman.style.color = '#2c3e50';
+                    return;
+                }
+                // 2. 从 localStorage 获取
+                const saved = localStorage.getItem('salesman_name');
+                if (saved && saved.trim()) {
+                    salesman.value = saved.trim();
+                    salesman.disabled = true;
+                    salesman.style.color = '#2c3e50';
+                    return;
+                }
+                // 3. 没有预设，允许手动输入，并保存
+                salesman.disabled = false;
+                salesman.addEventListener('blur', function() {
+                    const val = this.value.trim();
+                    if (val) {
+                        localStorage.setItem('salesman_name', val);
+                    }
+                });
+            }
+
+            // ─── 提交 ───
+            btnSubmit.addEventListener('click', async function() {
+                // 先校验
+                if (!validateForm()) {
+                    showToast('请完善所有必填信息', 'error', 2000);
+                    return;
+                }
+
+                // 收集数据
+                const assignedCompanies = [];
+                companyCheckboxes.forEach(cb => {
+                    if (cb.checked) assignedCompanies.push(cb.value);
+                });
+
+                const payload = {
+                    entryType: entryType,
+                    entityType: entityType,
+                    companyName: companyName.value.trim(),
+                    idNumber: idNumber.value.trim().toUpperCase(),
+                    contactName: contactName.value.trim(),
+                    contactPhone: contactPhone.value.trim(),
+                    salesman: salesman.value.trim(),
+                    assignedCompanies: assignedCompanies
+                };
+
+                // 禁用按钮
+                btnSubmit.disabled = true;
+                btnSubmit.textContent = '⏳ 提交中...';
+
+                try {
+                    const response = await fetch('/api/customers', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    const result = await response.json();
+
+                    if (result.code === 0) {
+                        // 成功
+                        btnSubmit.textContent = '✅ 已提交';
+                        btnSubmit.classList.add('success');
+                        showToast('🎉 提交成功！客户信息已保存', 'success', 3000);
+                        // 清空表单（保留业务员姓名）
+                        companyName.value = '';
+                        idNumber.value = '';
+                        contactName.value = '';
+                        contactPhone.value = '';
+                        companyCheckboxes.forEach(cb => cb.checked = false);
+                        // 清除错误状态
+                        document.querySelectorAll('.form-group input').forEach(inp => {
+                            inp.classList.remove('error');
+                        });
+                        document.querySelectorAll('.error-msg').forEach(el => el.classList.remove('show'));
+                        updateProgress();
+                        // 滚动到顶部
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                        // 5秒后恢复按钮
+                        setTimeout(() => {
+                            btnSubmit.disabled = false;
+                            btnSubmit.textContent = '📤 提交信息';
+                            btnSubmit.classList.remove('success');
+                        }, 5000);
+                    } else {
+                        showToast('❌ ' + result.message, 'error', 2500);
+                        btnSubmit.disabled = false;
+                        btnSubmit.textContent = '📤 提交信息';
+                    }
+                } catch (err) {
+                    showToast('❌ 网络连接失败，请检查网络后重试', 'error', 3000);
+                    btnSubmit.disabled = false;
+                    btnSubmit.textContent = '📤 提交信息';
+                }
+            });
+
+            // ─── 初始化 ───
+            function init() {
+                // 默认企业
+                entityType = '企业';
+                updateEntityType();
+                initSalesman();
+                updateProgress();
+                // 自动聚焦第一个输入框
+                setTimeout(() => companyName.focus(), 400);
+            }
+
+            init();
+
+            // 暴露 API 给全局（调试用）
+            window.__app = {
+                entryType: () => entryType,
+                entityType: () => entityType,
+                validate: validateForm,
+                updateProgress: updateProgress
+            };
+
+        })();
+    </script>
+
 </body>
 </html>
