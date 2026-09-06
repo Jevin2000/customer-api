@@ -21,7 +21,6 @@
             margin: 0 auto;
         }
 
-        /* 头部 */
         .header {
             padding: 12px 0 6px;
         }
@@ -36,7 +35,6 @@
             margin-top: 2px;
         }
 
-        /* 进度条 */
         .progress-bar {
             display: flex;
             align-items: center;
@@ -75,7 +73,6 @@
             margin-bottom: 16px;
         }
 
-        /* 分段选择器 */
         .segmented-group {
             display: flex;
             flex-direction: column;
@@ -125,7 +122,6 @@
             transform: scale(0.97);
         }
 
-        /* 表单字段 */
         .form-group {
             margin-bottom: 16px;
         }
@@ -149,8 +145,7 @@
             font-weight: 400;
             margin-left: 6px;
         }
-        .form-group input,
-        .form-group select {
+        .form-group input {
             width: 100%;
             padding: 12px 14px;
             font-size: 16px;
@@ -185,31 +180,12 @@
             display: block;
         }
 
-        /* 业务员字段 - 锁定样式 */
-        .form-group .input-locked {
-            display: flex;
-            align-items: center;
-            background: #f0f2f5;
-            border-radius: 10px;
-            padding: 0 14px;
-            border: 1.5px solid #dce1e8;
-        }
-        .form-group .input-locked input {
-            border: none;
-            background: transparent;
-            padding: 12px 0;
-            flex: 1;
-        }
-        .form-group .input-locked input:focus {
-            box-shadow: none;
-        }
-        .form-group .input-locked .lock-icon {
-            color: #8a9aa8;
-            font-size: 16px;
-            padding-left: 6px;
+        /* 业务员字段 - 普通输入（移除锁定样式） */
+        .form-group input.salesman-input {
+            /* 与普通输入框保持一致 */
         }
 
-        /* 分配公司 - 列表式多选 */
+        /* 分配公司 - 列表式多选（增强选中反馈） */
         .company-list {
             display: flex;
             flex-direction: column;
@@ -230,6 +206,7 @@
             font-size: 15px;
             color: #2c3e50;
             margin: 0;
+            position: relative;
         }
         .company-list label:active {
             transform: scale(0.98);
@@ -245,6 +222,18 @@
             flex-shrink: 0;
             margin: 0;
         }
+        /* ⭐ 选中后显示对勾标记 */
+        .company-list label .check-mark {
+            margin-left: auto;
+            font-size: 18px;
+            font-weight: 700;
+            color: #3498db;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+        .company-list label:has(input:checked) .check-mark {
+            opacity: 1;
+        }
         .company-list .multi-hint {
             font-size: 13px;
             color: #8a9aa8;
@@ -252,7 +241,6 @@
             padding: 4px 0 0 4px;
         }
 
-        /* 底部固定提交栏 */
         .submit-bar {
             position: fixed;
             bottom: 0;
@@ -302,7 +290,6 @@
             color: #5a6a7a;
         }
 
-        /* Toast 消息 */
         #toast {
             position: fixed;
             top: 20px;
@@ -336,7 +323,6 @@
             display: none !important;
         }
 
-        /* 简短提示动画 */
         @keyframes fadeSlideUp {
             from {
                 opacity: 0;
@@ -355,13 +341,11 @@
 <body>
 
     <div class="container">
-        <!-- 头部 -->
         <div class="header">
             <h1>📋 客户/供应商信息</h1>
             <div class="sub">请业务员如实填写，信息将统一汇总</div>
         </div>
 
-        <!-- 进度条 -->
         <div class="progress-bar">
             <span>填写进度</span>
             <div class="track">
@@ -370,9 +354,7 @@
             <span class="label" id="progressLabel">0/7</span>
         </div>
 
-        <!-- 表单卡片 -->
         <div class="card">
-            <!-- 1. 业务类型 + 主体类型：Segmented Control -->
             <div class="segmented-group">
                 <div class="segmented-item">
                     <div class="seg-label">业务类型 <span class="required">*</span></div>
@@ -391,69 +373,72 @@
             </div>
         </div>
 
-        <!-- 动态字段卡片 -->
         <div class="card">
-            <!-- 名称字段（动态标签） -->
             <div class="form-group">
                 <label id="nameLabel">企业名称 <span class="required">*</span></label>
                 <input type="text" id="companyName" placeholder="请输入企业名称" autocomplete="off" />
                 <div class="error-msg" id="nameError"></div>
             </div>
 
-            <!-- 证件号字段（动态切换） -->
             <div class="form-group" id="idGroup">
                 <label id="idLabel">统一社会信用代码 <span class="required">*</span></label>
                 <input type="text" id="idNumber" placeholder="请输入18位统一社会信用代码" autocomplete="off" maxlength="18" />
                 <div class="error-msg" id="idError">格式不正确，请输入18位字母或数字</div>
             </div>
 
-            <!-- 联系人 -->
             <div class="form-group">
                 <label>联系人 <span class="hint">（选填）</span></label>
                 <input type="text" id="contactName" placeholder="请输入联系人姓名" autocomplete="off" />
             </div>
 
-            <!-- 联系电话 -->
             <div class="form-group">
                 <label>联系电话 <span class="hint">（选填）</span></label>
                 <input type="tel" id="contactPhone" placeholder="请输入手机号码" autocomplete="off" />
             </div>
 
-            <!-- 业务员姓名（自动获取 + 锁定） -->
+            <!-- ⭐ 业务员：移除 localStorage 逻辑，恢复为普通输入框 -->
             <div class="form-group">
                 <label>业务员 <span class="required">*</span></label>
-                <div class="input-locked">
-                    <input type="text" id="salesman" placeholder="请填写你的全名" autocomplete="off" />
-                    <span class="lock-icon">🔒</span>
-                </div>
+                <input type="text" id="salesman" class="salesman-input" placeholder="请填写你的全名" autocomplete="off" />
                 <div class="error-msg" id="salesmanError"></div>
             </div>
         </div>
 
-        <!-- 分配公司卡片 -->
         <div class="card">
             <div class="form-group">
                 <label>分配公司 <span class="required">*</span> <span class="hint">（可多选）</span></label>
                 <div class="company-list" id="companyList">
-                    <label><input type="checkbox" value="兴平面粉"> 兴平面粉</label>
-                    <label><input type="checkbox" value="富平面粉"> 富平面粉</label>
-                    <label><input type="checkbox" value="工业公司"> 工业公司</label>
-                    <label><input type="checkbox" value="米业公司"> 米业公司</label>
-                    <label><input type="checkbox" value="黑龙江米业"> 黑龙江米业</label>
+                    <label>
+                        <input type="checkbox" value="兴平面粉"> 兴平面粉
+                        <span class="check-mark">✓</span>
+                    </label>
+                    <label>
+                        <input type="checkbox" value="富平面粉"> 富平面粉
+                        <span class="check-mark">✓</span>
+                    </label>
+                    <label>
+                        <input type="checkbox" value="工业公司"> 工业公司
+                        <span class="check-mark">✓</span>
+                    </label>
+                    <label>
+                        <input type="checkbox" value="米业公司"> 米业公司
+                        <span class="check-mark">✓</span>
+                    </label>
+                    <label>
+                        <input type="checkbox" value="黑龙江米业"> 黑龙江米业
+                        <span class="check-mark">✓</span>
+                    </label>
                     <div class="multi-hint">💡 可同时选择多个公司</div>
                 </div>
                 <div class="error-msg" id="companyError">请至少选择一个分配公司</div>
             </div>
         </div>
 
-        <!-- 底部占位（防止被固定栏遮挡） -->
         <div style="height: 20px;"></div>
     </div>
 
-    <!-- Toast -->
     <div id="toast"></div>
 
-    <!-- 底部固定提交栏 -->
     <div class="submit-bar">
         <button class="btn-submit" id="btnSubmit">📤 提交信息</button>
         <div class="footer-tip"><strong>提交后系统会自动保存</strong>，请勿重复点击</div>
@@ -463,7 +448,6 @@
         (function() {
             'use strict';
 
-            // ─── DOM 引用 ───
             const entryControl = document.getElementById('entryTypeControl');
             const entityControl = document.getElementById('entityTypeControl');
             const companyName = document.getElementById('companyName');
@@ -480,17 +464,14 @@
             const progressFill = document.getElementById('progressFill');
             const progressLabel = document.getElementById('progressLabel');
 
-            // 错误提示元素
             const nameError = document.getElementById('nameError');
             const idError = document.getElementById('idError');
             const salesmanError = document.getElementById('salesmanError');
             const companyError = document.getElementById('companyError');
 
-            // ─── 状态 ───
             let entryType = '客户';
             let entityType = '企业';
 
-            // ─── 工具函数 ───
             function showToast(text, type = 'success', duration = 2500) {
                 toast.textContent = text;
                 toast.className = type + ' show';
@@ -501,29 +482,18 @@
             }
 
             function updateProgress() {
-                // 必填字段列表
-                const fields = [
-                    companyName.value.trim(),
-                    idNumber.value.trim(),
-                    salesman.value.trim(),
-                    ...Array.from(companyCheckboxes).filter(cb => cb.checked)
-                ];
-                // 必填总数：名称、证件号、业务员 + 至少一个公司 = 4项
-                // 但证件号我们按有值算
                 let filled = 0;
                 if (companyName.value.trim()) filled++;
                 if (idNumber.value.trim()) filled++;
                 if (salesman.value.trim()) filled++;
                 const hasCompany = Array.from(companyCheckboxes).some(cb => cb.checked);
                 if (hasCompany) filled++;
-
                 const total = 4;
                 const pct = Math.min(100, Math.round((filled / total) * 100));
                 progressFill.style.width = pct + '%';
                 progressLabel.textContent = filled + '/' + total;
             }
 
-            // 切换主体类型：更新标签和占位符
             function updateEntityType() {
                 if (entityType === '企业') {
                     nameLabel.innerHTML = '企业名称 <span class="required">*</span>';
@@ -531,8 +501,6 @@
                     idLabel.innerHTML = '统一社会信用代码 <span class="required">*</span>';
                     idNumber.placeholder = '请输入18位统一社会信用代码';
                     idNumber.maxLength = 18;
-                    idNumber.value = idNumber.value.replace(/\s/g, '');
-                    // 清除身份证相关的错误
                     idError.textContent = '格式不正确，请输入18位字母或数字';
                 } else {
                     nameLabel.innerHTML = '姓名 <span class="required">*</span>';
@@ -540,40 +508,35 @@
                     idLabel.innerHTML = '身份证号 <span class="required">*</span>';
                     idNumber.placeholder = '请输入15或18位身份证号';
                     idNumber.maxLength = 18;
-                    idNumber.value = idNumber.value.replace(/\s/g, '');
                     idError.textContent = '格式不正确，请输入15位或18位身份证号（末位可为X）';
                 }
-                // 清除错误状态
                 clearFieldError(idNumber, idError);
                 clearFieldError(companyName, nameError);
                 updateProgress();
             }
 
-            // 清除字段错误状态
             function clearFieldError(input, errorEl) {
                 input.classList.remove('error');
                 if (errorEl) errorEl.classList.remove('show');
             }
 
-            // 显示字段错误
             function showFieldError(input, errorEl) {
                 input.classList.add('error');
                 if (errorEl) errorEl.classList.add('show');
             }
 
-            // ─── 校验函数 ───
-            function validateCreditCode(val) {
-                return /^[a-zA-Z0-9]{18}$/.test(val);
-            }
-
+            // ⭐ 身份证校验：同时兼容15位和18位
             function validateIdCard(val) {
                 return /(^\d{15}$)|(^\d{18}$)|(^\d{17}(\d|X|x)$)/.test(val);
+            }
+
+            function validateCreditCode(val) {
+                return /^[a-zA-Z0-9]{18}$/.test(val);
             }
 
             function validateForm() {
                 let isValid = true;
 
-                // 1. 名称
                 const nameVal = companyName.value.trim();
                 if (!nameVal) {
                     showFieldError(companyName, nameError);
@@ -583,7 +546,6 @@
                     clearFieldError(companyName, nameError);
                 }
 
-                // 2. 证件号
                 const idVal = idNumber.value.trim().toUpperCase();
                 idNumber.value = idVal;
                 let idValid = false;
@@ -599,7 +561,6 @@
                     clearFieldError(idNumber, idError);
                 }
 
-                // 3. 业务员
                 const salesmanVal = salesman.value.trim();
                 if (!salesmanVal) {
                     showFieldError(salesman, salesmanError);
@@ -609,7 +570,6 @@
                     clearFieldError(salesman, salesmanError);
                 }
 
-                // 4. 分配公司
                 const hasCompany = Array.from(companyCheckboxes).some(cb => cb.checked);
                 if (!hasCompany) {
                     companyError.classList.add('show');
@@ -622,18 +582,14 @@
                 return isValid;
             }
 
-            // ─── 实时校验（输入时触发） ───
             companyName.addEventListener('input', function() {
-                if (this.value.trim()) {
-                    clearFieldError(this, nameError);
-                }
+                if (this.value.trim()) clearFieldError(this, nameError);
                 updateProgress();
             });
 
             idNumber.addEventListener('input', function() {
                 let val = this.value.toUpperCase();
                 this.value = val;
-                // 实时校验
                 let valid = false;
                 if (entityType === '企业') {
                     valid = validateCreditCode(val);
@@ -649,31 +605,25 @@
             });
 
             salesman.addEventListener('input', function() {
-                if (this.value.trim()) {
-                    clearFieldError(this, salesmanError);
-                }
+                if (this.value.trim()) clearFieldError(this, salesmanError);
                 updateProgress();
             });
 
             companyCheckboxes.forEach(cb => {
                 cb.addEventListener('change', function() {
                     const hasCompany = Array.from(companyCheckboxes).some(c => c.checked);
-                    if (hasCompany) {
-                        companyError.classList.remove('show');
-                    }
+                    if (hasCompany) companyError.classList.remove('show');
                     updateProgress();
                 });
             });
 
-            // ─── Segmented Control 逻辑 ───
             function setupSegmented(control, callback) {
                 const options = control.querySelectorAll('.seg-option');
                 options.forEach(opt => {
                     opt.addEventListener('click', function() {
                         options.forEach(o => o.classList.remove('active'));
                         this.classList.add('active');
-                        const val = this.dataset.value;
-                        callback(val);
+                        callback(this.dataset.value);
                     });
                 });
             }
@@ -687,44 +637,14 @@
                 updateEntityType();
             });
 
-            // ─── 业务员自动获取 ───
-            function initSalesman() {
-                // 1. 优先从 URL 参数获取
-                const params = new URLSearchParams(window.location.search);
-                const urlSalesman = params.get('salesman');
-                if (urlSalesman && urlSalesman.trim()) {
-                    salesman.value = urlSalesman.trim();
-                    salesman.disabled = true;
-                    salesman.style.color = '#2c3e50';
-                    return;
-                }
-                // 2. 从 localStorage 获取
-                const saved = localStorage.getItem('salesman_name');
-                if (saved && saved.trim()) {
-                    salesman.value = saved.trim();
-                    salesman.disabled = true;
-                    salesman.style.color = '#2c3e50';
-                    return;
-                }
-                // 3. 没有预设，允许手动输入，并保存
-                salesman.disabled = false;
-                salesman.addEventListener('blur', function() {
-                    const val = this.value.trim();
-                    if (val) {
-                        localStorage.setItem('salesman_name', val);
-                    }
-                });
-            }
+            // ⭐ 移除 localStorage 逻辑，业务员姓名完全由用户手动输入
 
-            // ─── 提交 ───
             btnSubmit.addEventListener('click', async function() {
-                // 先校验
                 if (!validateForm()) {
                     showToast('请完善所有必填信息', 'error', 2000);
                     return;
                 }
 
-                // 收集数据
                 const assignedCompanies = [];
                 companyCheckboxes.forEach(cb => {
                     if (cb.checked) assignedCompanies.push(cb.value);
@@ -741,7 +661,6 @@
                     assignedCompanies: assignedCompanies
                 };
 
-                // 禁用按钮
                 btnSubmit.disabled = true;
                 btnSubmit.textContent = '⏳ 提交中...';
 
@@ -754,25 +673,20 @@
                     const result = await response.json();
 
                     if (result.code === 0) {
-                        // 成功
                         btnSubmit.textContent = '✅ 已提交';
                         btnSubmit.classList.add('success');
                         showToast('🎉 提交成功！客户信息已保存', 'success', 3000);
-                        // 清空表单（保留业务员姓名）
                         companyName.value = '';
                         idNumber.value = '';
                         contactName.value = '';
                         contactPhone.value = '';
                         companyCheckboxes.forEach(cb => cb.checked = false);
-                        // 清除错误状态
                         document.querySelectorAll('.form-group input').forEach(inp => {
                             inp.classList.remove('error');
                         });
                         document.querySelectorAll('.error-msg').forEach(el => el.classList.remove('show'));
                         updateProgress();
-                        // 滚动到顶部
                         window.scrollTo({ top: 0, behavior: 'smooth' });
-                        // 5秒后恢复按钮
                         setTimeout(() => {
                             btnSubmit.disabled = false;
                             btnSubmit.textContent = '📤 提交信息';
@@ -790,26 +704,14 @@
                 }
             });
 
-            // ─── 初始化 ───
             function init() {
-                // 默认企业
                 entityType = '企业';
                 updateEntityType();
-                initSalesman();
                 updateProgress();
-                // 自动聚焦第一个输入框
                 setTimeout(() => companyName.focus(), 400);
             }
 
             init();
-
-            // 暴露 API 给全局（调试用）
-            window.__app = {
-                entryType: () => entryType,
-                entityType: () => entityType,
-                validate: validateForm,
-                updateProgress: updateProgress
-            };
 
         })();
     </script>
