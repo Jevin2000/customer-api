@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>客户/供应商信息上报</title>
+    <!-- ⭐ 引入 QRCode 库 -->
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js">
+    </script>
     <style>
         * {
             box-sizing: border-box;
@@ -180,12 +183,7 @@
             display: block;
         }
 
-        /* 业务员字段 - 普通输入（移除锁定样式） */
-        .form-group input.salesman-input {
-            /* 与普通输入框保持一致 */
-        }
-
-        /* 分配公司 - 列表式多选（增强选中反馈） */
+        /* ⭐ 分配公司 - 列表式多选，复选框打在方框里（标准 checkbox） */
         .company-list {
             display: flex;
             flex-direction: column;
@@ -206,7 +204,6 @@
             font-size: 15px;
             color: #2c3e50;
             margin: 0;
-            position: relative;
         }
         .company-list label:active {
             transform: scale(0.98);
@@ -215,24 +212,14 @@
             background: #ebf5fb;
             border-color: #3498db;
         }
+        /* ⭐ 标准 checkbox，勾号出现在方框内 */
         .company-list input[type="checkbox"] {
             width: 20px;
             height: 20px;
             accent-color: #3498db;
             flex-shrink: 0;
             margin: 0;
-        }
-        /* ⭐ 选中后显示对勾标记 */
-        .company-list label .check-mark {
-            margin-left: auto;
-            font-size: 18px;
-            font-weight: 700;
-            color: #3498db;
-            opacity: 0;
-            transition: opacity 0.2s;
-        }
-        .company-list label:has(input:checked) .check-mark {
-            opacity: 1;
+            cursor: pointer;
         }
         .company-list .multi-hint {
             font-size: 13px;
@@ -241,6 +228,7 @@
             padding: 4px 0 0 4px;
         }
 
+        /* 底部提交栏 */
         .submit-bar {
             position: fixed;
             bottom: 0;
@@ -290,6 +278,7 @@
             color: #5a6a7a;
         }
 
+        /* Toast 消息 */
         #toast {
             position: fixed;
             top: 20px;
@@ -336,24 +325,56 @@
         .card {
             animation: fadeSlideUp 0.3s ease-out;
         }
+
+        /* 二维码卡片 */
+        .qr-card {
+            text-align: center;
+            padding: 16px !important;
+            background: #fafbfc !important;
+            border: 1.5px dashed #dce1e8 !important;
+        }
+        .qr-card .qr-title {
+            font-size: 14px;
+            color: #5a6a7a;
+            margin-bottom: 10px;
+        }
+        .qr-card .qr-tip {
+            font-size: 12px;
+            color: #8a9aa8;
+            margin-top: 10px;
+        }
+        .qr-card #qrcode {
+            display: inline-block;
+            background: white;
+            padding: 10px;
+            border-radius: 12px;
+        }
+        .qr-card #qrcode canvas {
+            display: block;
+            width: 160px;
+            height: 160px;
+        }
     </style>
 </head>
 <body>
 
     <div class="container">
+        <!-- 头部 -->
         <div class="header">
             <h1>📋 客户/供应商信息</h1>
             <div class="sub">请业务员如实填写，信息将统一汇总</div>
         </div>
 
+        <!-- 进度条 -->
         <div class="progress-bar">
             <span>填写进度</span>
             <div class="track">
                 <div class="fill" id="progressFill" style="width:0%;"></div>
             </div>
-            <span class="label" id="progressLabel">0/7</span>
+            <span class="label" id="progressLabel">0/4</span>
         </div>
 
+        <!-- 业务类型 & 主体类型 -->
         <div class="card">
             <div class="segmented-group">
                 <div class="segmented-item">
@@ -373,6 +394,7 @@
             </div>
         </div>
 
+        <!-- 表单字段 -->
         <div class="card">
             <div class="form-group">
                 <label id="nameLabel">企业名称 <span class="required">*</span></label>
@@ -396,37 +418,32 @@
                 <input type="tel" id="contactPhone" placeholder="请输入手机号码" autocomplete="off" />
             </div>
 
-            <!-- ⭐ 业务员：移除 localStorage 逻辑，恢复为普通输入框 -->
             <div class="form-group">
                 <label>业务员 <span class="required">*</span></label>
-                <input type="text" id="salesman" class="salesman-input" placeholder="请填写你的全名" autocomplete="off" />
+                <input type="text" id="salesman" placeholder="请填写你的全名" autocomplete="off" />
                 <div class="error-msg" id="salesmanError"></div>
             </div>
         </div>
 
+        <!-- 分配公司 -->
         <div class="card">
             <div class="form-group">
                 <label>分配公司 <span class="required">*</span> <span class="hint">（可多选）</span></label>
                 <div class="company-list" id="companyList">
                     <label>
-                        <input type="checkbox" value="兴平面粉"> 兴平面粉
-                        <span class="check-mark">✓</span>
+                        <input type="checkbox" value="公司A"> 公司A
                     </label>
                     <label>
-                        <input type="checkbox" value="富平面粉"> 富平面粉
-                        <span class="check-mark">✓</span>
+                        <input type="checkbox" value="公司B"> 公司B
                     </label>
                     <label>
-                        <input type="checkbox" value="工业公司"> 工业公司
-                        <span class="check-mark">✓</span>
+                        <input type="checkbox" value="公司C"> 公司C
                     </label>
                     <label>
-                        <input type="checkbox" value="米业公司"> 米业公司
-                        <span class="check-mark">✓</span>
+                        <input type="checkbox" value="公司D"> 公司D
                     </label>
                     <label>
-                        <input type="checkbox" value="黑龙江米业"> 黑龙江米业
-                        <span class="check-mark">✓</span>
+                        <input type="checkbox" value="公司E"> 公司E
                     </label>
                     <div class="multi-hint">💡 可同时选择多个公司</div>
                 </div>
@@ -434,11 +451,20 @@
             </div>
         </div>
 
+        <!-- ⭐ 二维码卡片 -->
+        <div class="card qr-card">
+            <div class="qr-title">📲 扫码直达填表页面</div>
+            <div id="qrcode"></div>
+            <div class="qr-tip">长按二维码保存到相册，下次扫码直接填</div>
+        </div>
+
         <div style="height: 20px;"></div>
     </div>
 
+    <!-- Toast -->
     <div id="toast"></div>
 
+    <!-- 底部固定提交栏 -->
     <div class="submit-bar">
         <button class="btn-submit" id="btnSubmit">📤 提交信息</button>
         <div class="footer-tip"><strong>提交后系统会自动保存</strong>，请勿重复点击</div>
@@ -448,11 +474,11 @@
         (function() {
             'use strict';
 
+            // ─── DOM 引用 ───
             const entryControl = document.getElementById('entryTypeControl');
             const entityControl = document.getElementById('entityTypeControl');
             const companyName = document.getElementById('companyName');
             const idNumber = document.getElementById('idNumber');
-            const idGroup = document.getElementById('idGroup');
             const idLabel = document.getElementById('idLabel');
             const nameLabel = document.getElementById('nameLabel');
             const contactName = document.getElementById('contactName');
@@ -472,6 +498,7 @@
             let entryType = '客户';
             let entityType = '企业';
 
+            // ─── Toast ───
             function showToast(text, type = 'success', duration = 2500) {
                 toast.textContent = text;
                 toast.className = type + ' show';
@@ -481,6 +508,7 @@
                 }, duration);
             }
 
+            // ─── 进度更新 ───
             function updateProgress() {
                 let filled = 0;
                 if (companyName.value.trim()) filled++;
@@ -494,6 +522,7 @@
                 progressLabel.textContent = filled + '/' + total;
             }
 
+            // ─── 主体类型切换 ───
             function updateEntityType() {
                 if (entityType === '企业') {
                     nameLabel.innerHTML = '企业名称 <span class="required">*</span>';
@@ -525,7 +554,7 @@
                 if (errorEl) errorEl.classList.add('show');
             }
 
-            // ⭐ 身份证校验：同时兼容15位和18位
+            // ─── 校验 ───
             function validateIdCard(val) {
                 return /(^\d{15}$)|(^\d{18}$)|(^\d{17}(\d|X|x)$)/.test(val);
             }
@@ -582,6 +611,7 @@
                 return isValid;
             }
 
+            // ─── 输入事件 ───
             companyName.addEventListener('input', function() {
                 if (this.value.trim()) clearFieldError(this, nameError);
                 updateProgress();
@@ -617,6 +647,7 @@
                 });
             });
 
+            // ─── Segmented Control ───
             function setupSegmented(control, callback) {
                 const options = control.querySelectorAll('.seg-option');
                 options.forEach(opt => {
@@ -637,8 +668,7 @@
                 updateEntityType();
             });
 
-            // ⭐ 移除 localStorage 逻辑，业务员姓名完全由用户手动输入
-
+            // ─── 提交 ───
             btnSubmit.addEventListener('click', async function() {
                 if (!validateForm()) {
                     showToast('请完善所有必填信息', 'error', 2000);
@@ -704,10 +734,36 @@
                 }
             });
 
+            // ─── 生成二维码（使用当前页面完整 URL） ───
+            function initQRCode() {
+                const qrContainer = document.getElementById('qrcode');
+                if (!qrContainer) return;
+                // 用当前页面 origin + pathname，去掉查询参数
+                const url = window.location.origin + window.location.pathname;
+                // 清空可能之前遗留的内容
+                qrContainer.innerHTML = '';
+                try {
+                    new QRCode(qrContainer, {
+                        text: url,
+                        width: 160,
+                        height: 160,
+                        colorDark: '#1a2a3a',
+                        colorLight: '#ffffff',
+                        correctLevel: QRCode.CorrectLevel.H
+                    });
+                } catch (e) {
+                    // 如果 QRCode 未加载，静默失败
+                    console.warn('QRCode 库未加载，请检查网络');
+                }
+            }
+
+            // ─── 初始化 ───
             function init() {
                 entityType = '企业';
                 updateEntityType();
                 updateProgress();
+                initQRCode();
+                // 自动聚焦
                 setTimeout(() => companyName.focus(), 400);
             }
 

@@ -3,8 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>客户/供应商信息汇总</title>
+    <title>客商信息汇总平台</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js">
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js">
     </script>
     <style>
         * {
@@ -20,7 +22,6 @@
             min-height: 100vh;
         }
 
-        /* 顶部栏 */
         .app-header {
             max-width: 1200px;
             margin: 0 auto 16px;
@@ -43,7 +44,6 @@
             font-size: 15px;
         }
 
-        /* 工具栏 */
         .toolbar {
             max-width: 1200px;
             margin: 0 auto 20px;
@@ -91,6 +91,13 @@
             opacity: 0.6;
             cursor: not-allowed;
         }
+        .btn-qr {
+            background: #8e44ad;
+            color: white;
+        }
+        .btn-qr:hover {
+            background: #732d91;
+        }
 
         .select-all-label {
             display: flex;
@@ -115,7 +122,6 @@
             color: #8a9aa8;
         }
 
-        /* 按天分组 */
         .day-group {
             max-width: 1200px;
             margin: 0 auto 20px;
@@ -143,7 +149,6 @@
             font-weight: 600;
         }
 
-        /* 单条数据卡片（后台专用 - 清爽高效版） */
         .customer-card {
             display: flex;
             align-items: stretch;
@@ -159,7 +164,6 @@
             border-bottom: none;
         }
 
-        /* 复选框 */
         .customer-card .checkbox-wrap {
             display: flex;
             align-items: center;
@@ -172,7 +176,6 @@
             cursor: pointer;
         }
 
-        /* 主体信息 */
         .card-main {
             flex: 1;
             min-width: 0;
@@ -201,7 +204,6 @@
             color: #4a5a6a;
         }
 
-        /* 标签统一 */
         .tag {
             display: inline-block;
             padding: 2px 12px;
@@ -257,7 +259,6 @@
             line-height: 1.8;
         }
 
-        /* 操作按钮 */
         .card-actions {
             display: flex;
             align-items: center;
@@ -295,7 +296,67 @@
             font-size: 18px;
         }
 
-        /* 移动端适配 */
+        /* 二维码弹窗 */
+        #qrModal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 999;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        #qrModal .modal-box {
+            background: white;
+            border-radius: 16px;
+            padding: 30px 24px 24px;
+            max-width: 360px;
+            width: 100%;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            animation: fadeSlideUp 0.3s ease-out;
+        }
+        #qrModal .modal-box h3 {
+            margin-bottom: 8px;
+            color: #1a2a3a;
+        }
+        #qrModal .modal-box .sub-text {
+            font-size: 13px;
+            color: #7f8c8d;
+            margin-bottom: 16px;
+        }
+        #qrModal .modal-box #qrModalContent {
+            display: inline-block;
+            background: white;
+            padding: 12px;
+            border-radius: 12px;
+        }
+        #qrModal .modal-box #qrModalContent canvas {
+            display: block;
+            width: 200px;
+            height: 200px;
+        }
+        #qrModal .modal-box .btn-group {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            margin-top: 16px;
+            flex-wrap: wrap;
+        }
+        #qrModal .modal-box .btn-group .btn {
+            min-width: 100px;
+        }
+        #qrModal .modal-box .url-text {
+            font-size: 12px;
+            color: #8a9aa8;
+            word-break: break-all;
+            margin-top: 12px;
+            padding: 8px;
+            background: #f5f7fa;
+            border-radius: 8px;
+        }
+
         @media (max-width: 640px) {
             body {
                 padding: 12px 8px 30px;
@@ -332,6 +393,13 @@
             .app-header h1 {
                 font-size: 20px;
             }
+            #qrModal .modal-box {
+                padding: 20px 16px 18px;
+            }
+            #qrModal .modal-box #qrModalContent canvas {
+                width: 160px;
+                height: 160px;
+            }
         }
 
         @media (max-width: 400px) {
@@ -358,6 +426,7 @@
         <button class="btn btn-refresh" id="refreshBtn">🔄 刷新</button>
         <button class="btn btn-export" id="exportBtn">📥 导出选中</button>
         <button class="btn btn-danger" id="batchDeleteBtn">🗑️ 删除选中</button>
+        <button class="btn btn-qr" id="qrBtn">📲 二维码</button>
         <label class="select-all-label">
             <input type="checkbox" id="selectAllCheckbox"> 全选
         </label>
@@ -368,6 +437,20 @@
     <!-- 列表容器 -->
     <div id="container">
         <div class="empty-state">⏳ 加载数据中...</div>
+    </div>
+
+    <!-- 二维码弹窗 -->
+    <div id="qrModal">
+        <div class="modal-box">
+            <h3>📲 业务员填表二维码</h3>
+            <div class="sub-text">业务员扫码即可打开填表页面</div>
+            <div id="qrModalContent"></div>
+            <div class="btn-group">
+                <button class="btn" id="downloadQrBtn" style="background:#2ecc71;color:white;">⬇️ 下载</button>
+                <button class="btn" id="closeQrModal" style="background:#e74c3c;color:white;">关闭</button>
+            </div>
+            <div class="url-text" id="qrUrlDisplay"></div>
+        </div>
     </div>
 
     <script>
@@ -381,7 +464,6 @@
 
             let currentCustomers = [];
 
-            // 工具：防 XSS
             function escapeHtml(str) {
                 if (!str) return '';
                 const div = document.createElement('div');
@@ -389,7 +471,6 @@
                 return div.innerHTML;
             }
 
-            // 格式化时间
             function formatTime(dateStr) {
                 try {
                     const d = new Date(dateStr);
@@ -397,7 +478,6 @@
                 } catch (_) { return ''; }
             }
 
-            // 格式化日期 key
             function formatDateKey(dateStr) {
                 try {
                     const d = new Date(dateStr);
@@ -405,7 +485,6 @@
                 } catch (_) { return ''; }
             }
 
-            // 加载数据
             async function loadData() {
                 try {
                     const res = await fetch(API_URL);
@@ -421,7 +500,6 @@
                 }
             }
 
-            // 渲染
             function renderGroups(customers) {
                 totalBadge.textContent = customers.length + ' 条';
 
@@ -430,7 +508,6 @@
                     return;
                 }
 
-                // 按天分组
                 const groups = {};
                 customers.forEach(c => {
                     const key = formatDateKey(c.createdAt);
@@ -446,7 +523,8 @@
                 sortedDates.forEach(dateKey => {
                     const items = groups[dateKey];
                     html += `<div class="day-group">`;
-                    html += `<div class="day-header"><span>📅 ${dateKey}</span><span class="day-count">${items.length} 条</span></div>`;
+                    html +=
+                        `<div class="day-header"><span>📅 ${dateKey}</span><span class="day-count">${items.length} 条</span></div>`;
 
                     items.forEach(c => {
                         const id = c.id;
@@ -511,7 +589,6 @@
 
                 container.innerHTML = html;
 
-                // 绑定删除事件
                 document.querySelectorAll('.btn-del').forEach(btn => {
                     btn.addEventListener('click', async function() {
                         const id = this.dataset.id;
@@ -522,7 +599,6 @@
                     });
                 });
 
-                // 绑定复选框全选联动
                 const checkboxes = document.querySelectorAll('.row-checkbox');
                 checkboxes.forEach(cb => {
                     cb.addEventListener('change', function() {
@@ -536,7 +612,6 @@
                 });
             }
 
-            // 删除单条
             async function deleteItem(id) {
                 try {
                     const res = await fetch(`${API_URL}/${id}`, { method: 'DELETE' });
@@ -547,7 +622,6 @@
                 }
             }
 
-            // 批量删除
             document.getElementById('batchDeleteBtn').addEventListener('click', async function() {
                 const checkedIds = [];
                 document.querySelectorAll('.row-checkbox:checked').forEach(cb => checkedIds.push(cb.value));
@@ -578,7 +652,6 @@
                 }
             });
 
-            // 导出 Excel
             document.getElementById('exportBtn').addEventListener('click', function() {
                 const checkedIds = [];
                 document.querySelectorAll('.row-checkbox:checked').forEach(cb => checkedIds.push(cb.value));
@@ -613,10 +686,58 @@
                 XLSX.writeFile(wb, `客户供应商_${now}_${selectedData.length}条.xlsx`);
             });
 
-            // 刷新按钮
             document.getElementById('refreshBtn').addEventListener('click', loadData);
 
-            // 启动
+            // ─── 二维码弹窗 ───
+            const qrBtn = document.getElementById('qrBtn');
+            const qrModal = document.getElementById('qrModal');
+            const qrModalContent = document.getElementById('qrModalContent');
+            const closeQrModal = document.getElementById('closeQrModal');
+            const downloadQrBtn = document.getElementById('downloadQrBtn');
+            const qrUrlDisplay = document.getElementById('qrUrlDisplay');
+
+            let qrCodeInstance = null;
+
+            function openQrModal() {
+                const baseUrl = window.location.origin;
+                const clientUrl = baseUrl + '/client.html';
+                qrUrlDisplay.textContent = '填表链接：' + clientUrl;
+                qrModal.style.display = 'flex';
+                qrModalContent.innerHTML = '';
+                try {
+                    qrCodeInstance = new QRCode(qrModalContent, {
+                        text: clientUrl,
+                        width: 200,
+                        height: 200,
+                        colorDark: '#1a2a3a',
+                        colorLight: '#ffffff',
+                        correctLevel: QRCode.CorrectLevel.H
+                    });
+                } catch (e) {
+                    qrModalContent.innerHTML = '<p style="color:red;">二维码加载失败，请检查网络</p>';
+                }
+            }
+
+            function closeQrModalFn() {
+                qrModal.style.display = 'none';
+            }
+
+            function downloadQr() {
+                const canvas = qrModalContent.querySelector('canvas');
+                if (!canvas) return;
+                const link = document.createElement('a');
+                link.download = '填表二维码.png';
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+            }
+
+            qrBtn.addEventListener('click', openQrModal);
+            closeQrModal.addEventListener('click', closeQrModalFn);
+            qrModal.addEventListener('click', function(e) {
+                if (e.target === this) closeQrModalFn();
+            });
+            downloadQrBtn.addEventListener('click', downloadQr);
+
             loadData();
 
         })();
