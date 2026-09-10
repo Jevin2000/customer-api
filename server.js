@@ -137,24 +137,20 @@ const SERVERCHAN_SENDKEY = process.env.SERVERCHAN_SENDKEY || 'SCT398228T5tv0FscR
 // 推送接口的访问密钥
 const CRON_SECRET = process.env.CRON_SECRET || 'tsmfuser';
 
-// 根据 SendKey 构造推送 URL（兼容新旧格式）
+// 根据 SendKey 构造推送 URL（兼容 Server酱 Turbo 与 Server酱³）
 function buildPushUrl(sendkey) {
-    let uid = '';
-    // 新版 Server酱³ 格式：SCT 开头，例如 SCT398228T5tv0FscRox1UARF6zU2nlMuv
+    // Server酱 Turbo：SCT 开头，直接用 sctapi.ftqq.com 端点
     if (sendkey.startsWith('SCT')) {
-        const match = sendkey.match(/^SCT(\d+)T/);
-        if (match) uid = match[1];
+        return `https://sctapi.ftqq.com/${sendkey}.send`;
     }
-    // 旧版 Server酱 格式：sctp 开头
-    else if (sendkey.startsWith('sctp')) {
+    // Server酱³：sctp 开头，需要提取 uid
+    if (sendkey.startsWith('sctp')) {
         const match = sendkey.match(/^sctp(\d+)t/);
-        if (match) uid = match[1];
+        if (match) {
+            return `https://${match[1]}.push.ft07.com/send/${sendkey}.send`;
+        }
     }
-
-    if (!uid) {
-        throw new Error('无法从 SendKey 中解析出 uid，请检查 SendKey 格式');
-    }
-    return `https://${uid}.push.ft07.com/send/${sendkey}.send`;
+    throw new Error('无法识别的 SendKey 格式');
 }
 
 // 格式化日期
