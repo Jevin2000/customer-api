@@ -125,6 +125,133 @@ app.delete('/api/customers/:id', async (req, res) => {
     }
 });
 
+// ══════════════════════════════════════════
+// 🕐 定时推送接口（供 cron-job.org 调用）
+// ══════════════════════════════════════════
+
+// 推送接口的访问密码（在环境变量中设置）
+const CRON_SECRET = process.env.CRON_SECRET || 'your-secret-key';
+
+// 方糖 SendKey（在环境变量中设置）
+const SERVERCHAN_SENDKEY = process.env.SERVERCHAN_SENDKEY;
+
+// 格式化日期
+function formatDate(date) {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    const h = String(date.getHours()).padStart(2, '0');
+    const min = String(date.getMinutes()).padStart(2, '0');
+    return `${y}-${m}-${d} ${h}:${min}`;
+}
+
+// 构建推送内容（Markdown 格式）
+function buildPushContent(data, start, end) {
+    const count = data.length;
+
+    if (count === 0) {
+        return {
+            title: '📋 客商信息日汇总（0条）',
+            desp: `**统计时间段**：${formatDate(start)} ~ ${formatDate(end)}\n\n**今日无新增客商信息** ✅\n\n无需录入EAS系统。`
+        };
+    }
+
+    const customerCount = data.filter(c => c.entryType === '客户').length;
+    const supplierCount = data.filter(c => c.entryType === '供应商').length;
+    const enterpriseCount = data.filter(c => c.entityType === '企业').length;
+    const individualCount = data.filter(c => c.entityType === '个人').length;
+
+    let desp = `**统计时间段**：${formatDate(start)} ~ ${formatDate(end)}\n\n`;
+    desp += `## 📊 数据概览\n`;
+    desp += `- 新增总数：**${count}** 条\n`;
+    desp += `- 客户：${customerCount} 条 ｜ 供应商：${supplierCount} 条\n`;
+    desp += `- 企业：${enterpriseCount} 条 ｜ 个人：${individualCount} 条\n\n`;
+    desp += `## 📝 明细列表\n\n`;
+
+    data.forEach((c, index) => {
+        const typeTag = c.entryType === '供应商' ? '🟠供应商' : '🔵客户';
+        const entityTag = c.entityType === '个人' ? '👤个人' : '🏢企业';
+        desp += `${index + 1}. **${c.companyName}** [${typeTag} · ${entityTag}]\n`;
+        desp += `   证件号：${c.idNumber}\n`;
+        desp += `   联系人：${c.contactName || '未填'} ｜ 电话：${c.contactPhone || '未填'}\n`;
+        desp += `   业务员：${c.salesman} ｜ 分配：${(c.assignedCompanies || []).join('、')}\n\n`;
+    });
+
+    return {
+        title: `📋 客商信息日汇总（${count}条）`,
+        desp: desp
+    };
+}
+
+// 推送接口（由 cron-job.org 调用）
+app.get('/api/cron/push', async (req, res) => {
+    // 验证密钥
+    const secret = req.query.secret;
+    if (!secret || secret !== CRON_SECRET) {
+        return res.status(403).json({ code: 403, message: '未授权访问' });
+    }
+
+    if (!SERVERCHAN_SENDKEY) {
+        return res.status(500).json({ code: 500, message: '未配置 SERVERCHAN_SENDKEY' });
+    }
+
+    try {
+        // 计算时间段：昨天 20:00 到 今天 20:00
+        const now = new Date();
+        const end = new Date(now);
+        end.setHours(20, 0, 0, 0);
+        const start = new Date(end);
+        start.setDate(start.getDate() - 1);
+
+        // 查询数据
+        const customers = await Customer.find({
+            createdAt: { $gte: start, $lte: end }
+        }).sort({ createdAt: -1 });
+
+        const data = customers.map(c => ({
+            entryType: c.entryType,
+            entityType: c.entityType,
+            companyName: c.companyName,
+            idNumber: c.idNumber,
+            contactName: c.contactName,
+            contactPhone: c.contactPhone,
+            salesman: c.salesman,
+            assignedCompanies: c.assignedCompanies,
+            createdAt: c.createdAt
+        }));
+
+        // 构建推送内容
+        const { title, desp } = buildPushContent(data, start, end);
+
+        // 通过方糖推送
+        // 从 SendKey 提取 uid（格式：sctp{uid}t{token}）
+        const uidMatch = SERVERCHAN_SENDKEY.match(/^sctp(\d+)t/);
+        const uid = uidMatch ? uidMatch[1] : '';
+        const pushUrl = `https://${uid}.push.ft07.com/send/${SERVERCHAN_SENDKEY}.send`;
+
+        const pushRes = await fetch(pushUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ title, desp })
+        });
+        const pushResult = await pushRes.json();
+
+        console.log(`✅ 推送完成：${title}，方糖返回：`, pushResult);
+
+        res.json({
+            code: 0,
+            message: `推送成功，共 ${data.length} 条数据`,
+            count: data.length,
+            title: title,
+            pushResult: pushResult
+        });
+
+    } catch (err) {
+        console.error('❌ 推送失败：', err);
+        res.status(500).json({ code: 500, message: '推送失败', error: err.message });
+    }
+});
+
 app.listen(port, () => {
     console.log(`🚀 服务已启动！`);
     console.log(`📱 手机填写页面（公开）：http://localhost:${port}/client.html`);
