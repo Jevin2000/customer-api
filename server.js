@@ -8,7 +8,7 @@ const port = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
-// ─── 1. 先为后台页面设置登录保护 ───
+// ─── 1. 先为后台页面设置登录保护（必须在静态文件托管之前） ───
 app.use('/dashboard.html', basicAuth({
     users: {
         [process.env.BASIC_AUTH_USERNAME || 'admin']: process.env.BASIC_AUTH_PASSWORD || '123456'
@@ -25,7 +25,7 @@ app.use('/dashboard', basicAuth({
     unauthorizedResponse: '❌ 访问被拒绝'
 }));
 
-// ─── 2. 然后托管所有静态文件 ───
+// ─── 2. 然后托管所有静态文件（client.html 可公开访问） ───
 app.use(express.static(__dirname));
 
 // ─── 连接云数据库 ───
@@ -34,20 +34,20 @@ mongoose.connect(mongoURI)
     .then(() => console.log('✅ 云数据库连接成功！'))
     .catch(err => console.log('❌ 数据库连接失败', err));
 
-// ─── 数据结构定义（新增 entityType） ───
+// ─── 数据结构定义 ───
 const customerSchema = new mongoose.Schema({
-    entryType: { 
-        type: String, 
-        required: true, 
+    entryType: {
+        type: String,
+        required: true,
         enum: ['客户', '供应商']
     },
-    entityType: { 
-        type: String, 
-        required: true, 
-        enum: ['企业', '个人']  // ⭐ 新增：主体类型
+    entityType: {
+        type: String,
+        required: true,
+        enum: ['企业', '个人']
     },
     companyName: { type: String, required: true },
-    idNumber: { type: String, required: true },  // 统一存储：信用代码或身份证号
+    idNumber: { type: String, required: true },
     contactName: String,
     contactPhone: String,
     salesman: { type: String, required: true },
@@ -58,6 +58,7 @@ const Customer = mongoose.model('Customer', customerSchema);
 
 // ─── API 接口 ───
 
+// 1. 新增客户/供应商
 app.post('/api/customers', async (req, res) => {
     try {
         const { entryType, entityType, companyName, idNumber, contactName, contactPhone, salesman, assignedCompanies } = req.body;
@@ -93,6 +94,7 @@ app.post('/api/customers', async (req, res) => {
     }
 });
 
+// 2. 查询所有数据
 app.get('/api/customers', async (req, res) => {
     try {
         const customers = await Customer.find().sort({ createdAt: -1 });
@@ -114,6 +116,7 @@ app.get('/api/customers', async (req, res) => {
     }
 });
 
+// 3. 删除单条数据
 app.delete('/api/customers/:id', async (req, res) => {
     try {
         const id = req.params.id;
@@ -129,11 +132,30 @@ app.delete('/api/customers/:id', async (req, res) => {
 // 🕐 定时推送接口（供 cron-job.org 调用）
 // ══════════════════════════════════════════
 
-// 推送接口的访问密码（在环境变量中设置）
-const CRON_SECRET = process.env.CRON_SECRET || 'your-secret-key';
+// 方糖 SendKey（优先使用环境变量，否则使用默认值）
+const SERVERCHAN_SENDKEY = process.env.SERVERCHAN_SENDKEY || 'SCT398228T5tv0FscRox1UARF6zU2nlMuv';
+// 推送接口的访问密钥
+const CRON_SECRET = process.env.CRON_SECRET || 'tsmfuser';
 
-// 方糖 SendKey（在环境变量中设置）
-const SERVERCHAN_SENDKEY = process.env.SERVERCHAN_SENDKEY;
+// 根据 SendKey 构造推送 URL（兼容新旧格式）
+function buildPushUrl(sendkey) {
+    let uid = '';
+    // 新版 Server酱³ 格式：SCT 开头，例如 SCT398228T5tv0FscRox1UARF6zU2nlMuv
+    if (sendkey.startsWith('SCT')) {
+        const match = sendkey.match(/^SCT(\d+)T/);
+        if (match) uid = match[1];
+    }
+    // 旧版 Server酱 格式：sctp 开头
+    else if (sendkey.startsWith('sctp')) {
+        const match = sendkey.match(/^sctp(\d+)t/);
+        if (match) uid = match[1];
+    }
+
+    if (!uid) {
+        throw new Error('无法从 SendKey 中解析出 uid，请检查 SendKey 格式');
+    }
+    return `https://${uid}.push.ft07.com/send/${sendkey}.send`;
+}
 
 // 格式化日期
 function formatDate(date) {
@@ -223,12 +245,10 @@ app.get('/api/cron/push', async (req, res) => {
         // 构建推送内容
         const { title, desp } = buildPushContent(data, start, end);
 
-        // 通过方糖推送
-        // 从 SendKey 提取 uid（格式：sctp{uid}t{token}）
-        const uidMatch = SERVERCHAN_SENDKEY.match(/^sctp(\d+)t/);
-        const uid = uidMatch ? uidMatch[1] : '';
-        const pushUrl = `https://${uid}.push.ft07.com/send/${SERVERCHAN_SENDKEY}.send`;
+        // 构造推送 URL
+        const pushUrl = buildPushUrl(SERVERCHAN_SENDKEY);
 
+        // 通过方糖推送
         const pushRes = await fetch(pushUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -256,4 +276,5 @@ app.listen(port, () => {
     console.log(`🚀 服务已启动！`);
     console.log(`📱 手机填写页面（公开）：http://localhost:${port}/client.html`);
     console.log(`💻 后台管理（需登录）：http://localhost:${port}/dashboard.html`);
+    console.log(`🕐 定时推送接口：http://localhost:${port}/api/cron/push?secret=${CRON_SECRET}`);
 });
