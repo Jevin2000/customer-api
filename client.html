@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>客户/供应商信息上报</title>
-    <!-- ⭐ 引入 QRCode 库 -->
+    <!-- 引入 QRCode 库 -->
     <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js">
     </script>
     <style>
@@ -183,18 +183,18 @@
             display: block;
         }
 
-        /* ⭐ 分配公司 - 列表式多选，复选框打在方框里（标准 checkbox） */
+        /* ⭐ 分配公司 - 自定义复选框，勾号显示在方框内 */
         .company-list {
             display: flex;
             flex-direction: column;
-            gap: 4px;
+            gap: 6px;
             margin-top: 4px;
         }
         .company-list label {
             display: flex;
             align-items: center;
             gap: 12px;
-            padding: 10px 14px;
+            padding: 12px 14px;
             border-radius: 10px;
             background: #fafbfc;
             border: 1.5px solid #eef0f2;
@@ -204,6 +204,7 @@
             font-size: 15px;
             color: #2c3e50;
             margin: 0;
+            user-select: none;
         }
         .company-list label:active {
             transform: scale(0.98);
@@ -212,15 +213,40 @@
             background: #ebf5fb;
             border-color: #3498db;
         }
-        /* ⭐ 标准 checkbox，勾号出现在方框内 */
+
+        /* ⭐ 自定义复选框：隐藏原生，自己画方框和对勾 */
         .company-list input[type="checkbox"] {
-            width: 20px;
-            height: 20px;
-            accent-color: #3498db;
+            appearance: none;
+            -webkit-appearance: none;
+            width: 22px;
+            height: 22px;
+            border: 2px solid #c8d0d8;
+            border-radius: 6px;
+            background: #ffffff;
+            cursor: pointer;
+            position: relative;
             flex-shrink: 0;
             margin: 0;
-            cursor: pointer;
+            transition: all 0.15s;
         }
+        .company-list input[type="checkbox"]:checked {
+            background: #3498db;
+            border-color: #3498db;
+        }
+        /* 勾号：用伪元素绘制，居中显示在方框内 */
+        .company-list input[type="checkbox"]:checked::after {
+            content: '✓';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #ffffff;
+            font-size: 15px;
+            font-weight: 900;
+            line-height: 1;
+            font-family: Arial, sans-serif;
+        }
+
         .company-list .multi-hint {
             font-size: 13px;
             color: #8a9aa8;
@@ -228,7 +254,6 @@
             padding: 4px 0 0 4px;
         }
 
-        /* 底部提交栏 */
         .submit-bar {
             position: fixed;
             bottom: 0;
@@ -278,7 +303,6 @@
             color: #5a6a7a;
         }
 
-        /* Toast 消息 */
         #toast {
             position: fixed;
             top: 20px;
@@ -425,25 +449,25 @@
             </div>
         </div>
 
-        <!-- 分配公司 -->
+        <!-- 分配公司（真实公司名称） -->
         <div class="card">
             <div class="form-group">
                 <label>分配公司 <span class="required">*</span> <span class="hint">（可多选）</span></label>
                 <div class="company-list" id="companyList">
                     <label>
-                        <input type="checkbox" value="公司A"> 公司A
+                        <input type="checkbox" value="兴平面粉"> 兴平面粉
                     </label>
                     <label>
-                        <input type="checkbox" value="公司B"> 公司B
+                        <input type="checkbox" value="富平面粉"> 富平面粉
                     </label>
                     <label>
-                        <input type="checkbox" value="公司C"> 公司C
+                        <input type="checkbox" value="工业公司"> 工业公司
                     </label>
                     <label>
-                        <input type="checkbox" value="公司D"> 公司D
+                        <input type="checkbox" value="米业公司"> 米业公司
                     </label>
                     <label>
-                        <input type="checkbox" value="公司E"> 公司E
+                        <input type="checkbox" value="黑龙江米业"> 黑龙江米业
                     </label>
                     <div class="multi-hint">💡 可同时选择多个公司</div>
                 </div>
@@ -451,7 +475,7 @@
             </div>
         </div>
 
-        <!-- ⭐ 二维码卡片 -->
+        <!-- 二维码卡片 -->
         <div class="card qr-card">
             <div class="qr-title">📲 扫码直达填表页面</div>
             <div id="qrcode"></div>
@@ -474,7 +498,6 @@
         (function() {
             'use strict';
 
-            // ─── DOM 引用 ───
             const entryControl = document.getElementById('entryTypeControl');
             const entityControl = document.getElementById('entityTypeControl');
             const companyName = document.getElementById('companyName');
@@ -498,7 +521,6 @@
             let entryType = '客户';
             let entityType = '企业';
 
-            // ─── Toast ───
             function showToast(text, type = 'success', duration = 2500) {
                 toast.textContent = text;
                 toast.className = type + ' show';
@@ -508,7 +530,6 @@
                 }, duration);
             }
 
-            // ─── 进度更新 ───
             function updateProgress() {
                 let filled = 0;
                 if (companyName.value.trim()) filled++;
@@ -522,7 +543,6 @@
                 progressLabel.textContent = filled + '/' + total;
             }
 
-            // ─── 主体类型切换 ───
             function updateEntityType() {
                 if (entityType === '企业') {
                     nameLabel.innerHTML = '企业名称 <span class="required">*</span>';
@@ -554,7 +574,6 @@
                 if (errorEl) errorEl.classList.add('show');
             }
 
-            // ─── 校验 ───
             function validateIdCard(val) {
                 return /(^\d{15}$)|(^\d{18}$)|(^\d{17}(\d|X|x)$)/.test(val);
             }
@@ -611,7 +630,6 @@
                 return isValid;
             }
 
-            // ─── 输入事件 ───
             companyName.addEventListener('input', function() {
                 if (this.value.trim()) clearFieldError(this, nameError);
                 updateProgress();
@@ -647,7 +665,6 @@
                 });
             });
 
-            // ─── Segmented Control ───
             function setupSegmented(control, callback) {
                 const options = control.querySelectorAll('.seg-option');
                 options.forEach(opt => {
@@ -668,7 +685,6 @@
                 updateEntityType();
             });
 
-            // ─── 提交 ───
             btnSubmit.addEventListener('click', async function() {
                 if (!validateForm()) {
                     showToast('请完善所有必填信息', 'error', 2000);
@@ -734,13 +750,10 @@
                 }
             });
 
-            // ─── 生成二维码（使用当前页面完整 URL） ───
             function initQRCode() {
                 const qrContainer = document.getElementById('qrcode');
                 if (!qrContainer) return;
-                // 用当前页面 origin + pathname，去掉查询参数
                 const url = window.location.origin + window.location.pathname;
-                // 清空可能之前遗留的内容
                 qrContainer.innerHTML = '';
                 try {
                     new QRCode(qrContainer, {
@@ -752,18 +765,15 @@
                         correctLevel: QRCode.CorrectLevel.H
                     });
                 } catch (e) {
-                    // 如果 QRCode 未加载，静默失败
-                    console.warn('QRCode 库未加载，请检查网络');
+                    console.warn('QRCode 库未加载');
                 }
             }
 
-            // ─── 初始化 ───
             function init() {
                 entityType = '企业';
                 updateEntityType();
                 updateProgress();
                 initQRCode();
-                // 自动聚焦
                 setTimeout(() => companyName.focus(), 400);
             }
 
